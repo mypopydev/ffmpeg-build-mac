@@ -66,8 +66,11 @@ REQUIRED_PACKAGES=(
     "git-svn"
     "libtool"
     "make"
+    "meson"
     "nasm"
+    "ninja"
     "pkg-config"
+    "python3"
     "yasm"
     "zlib"
     "bzip2"
@@ -102,6 +105,10 @@ GIT_REPOS=(
     "https://github.com/xiph/opus.git"
     "https://chromium.googlesource.com/webm/libvpx.git"
     "https://aomedia.googlesource.com/aom"
+    "https://github.com/cisco/openh264.git"
+    "https://github.com/ultravideo/kvazaar.git"
+    "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
+    "https://code.videolan.org/videolan/dav1d.git"
 )
 
 REPO_COUNT=0

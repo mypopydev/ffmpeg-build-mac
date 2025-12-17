@@ -28,7 +28,7 @@ chmod +x build_mac.sh
 
 构建脚本会自动：
 - 安装所有必需的依赖
-- 编译外部库（x264, x265, fdk-aac, lame, opus, vpx）
+- 编译外部库（x264, x265, openh264, Kvazaar, fdk-aac, lame, opus, vpx, aom, SVT-AV1, dav1d）
 - 编译 FFmpeg
 
 ### 方法 2: 手动构建
@@ -126,10 +126,11 @@ source ~/.zshrc
 构建的 FFmpeg 包含以下编码器（**所有库均使用最新开发版本**）：
 
 - **视频编码器:**
-  - H.264 (libx264) - 从 Git 仓库获取最新开发版本
-  - H.265/HEVC (libx265) - 从 Git 仓库获取最新开发版本
+  - H.264 (libx264, openh264) - 从 Git 仓库获取最新开发版本
+  - H.265/HEVC (libx265, Kvazaar) - 从 Git 仓库获取最新开发版本
   - VP8/VP9 (libvpx) - 从 Git 仓库获取最新开发版本
-  - AV1 (libaom) - 从 Git 仓库获取最新开发版本
+  - AV1 (libaom, SVT-AV1) - 从 Git 仓库获取最新开发版本
+  - AV1 解码器 (dav1d) - 从 Git 仓库获取最新开发版本
 
 - **音频编码器:**
   - AAC (libfdk_aac) - 从 Git 仓库获取最新开发版本
@@ -162,6 +163,10 @@ cd lame && git svn rebase && cd ..
 cd opus && git pull && cd ..
 cd libvpx && git pull && cd ..
 cd aom && git pull && cd ..
+cd openh264 && git pull && cd ..
+cd kvazaar && git pull && cd ..
+cd SVT-AV1 && git pull && cd ..
+cd dav1d && git pull && cd ..
 ```
 
 然后重新运行 `build_mac.sh` 脚本，它会自动重新编译所有更新的库。

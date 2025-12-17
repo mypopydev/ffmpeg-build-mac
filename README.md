@@ -57,10 +57,10 @@
 所有库均使用最新开发版本：
 
 - **视频编码器:**
-  - H.264 (libx264)
-  - H.265/HEVC (libx265)
+  - H.264 (libx264, openh264)
+  - H.265/HEVC (libx265, Kvazaar)
   - VP8/VP9 (libvpx)
-  - AV1 (libaom)
+  - AV1 (libaom, SVT-AV1, dav1d)
 
 - **音频编码器:**
   - AAC (libfdk_aac)

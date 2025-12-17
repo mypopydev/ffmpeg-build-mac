@@ -47,8 +47,11 @@ brew install \
     git-svn \
     libtool \
     make \
+    meson \
     nasm \
+    ninja \
     pkg-config \
+    python3 \
     yasm \
     zlib \
     bzip2
@@ -58,8 +61,7 @@ brew install \
 
 ```bash
 mkdir -p ffmpeg_sources
-mkdir -p ffmpeg_build
-mkdir -p bin
+mkdir -p ffmpeg_build/{bin,lib,include,share}
 ```
 
 #### 3. 编译外部库
@@ -75,7 +77,7 @@ PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig" ./configure \
     --extra-cflags="-I./ffmpeg_build/include" \
     --extra-ldflags="-L./ffmpeg_build/lib" \
     --extra-libs="-lpthread -lm" \
-    --bindir="./bin" \
+    --bindir="./ffmpeg_build/bin" \
     --enable-gpl \
     --enable-libfdk_aac \
     --enable-libfreetype \
@@ -84,6 +86,11 @@ PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig" ./configure \
     --enable-libvpx \
     --enable-libx264 \
     --enable-libx265 \
+    --enable-libaom \
+    --enable-libopenh264 \
+    --enable-libkvazaar \
+    --enable-libsvtav1 \
+    --enable-libdav1d \
     --enable-nonfree \
     --enable-version3
 
@@ -93,11 +100,45 @@ make install
 
 ## 目录结构
 
-构建完成后，会创建以下目录：
+构建完成后，会创建以下目录结构：
 
-- `ffmpeg_sources/` - 外部库的源代码（可删除）
-- `ffmpeg_build/` - 编译后的库文件
-- `bin/` - FFmpeg 可执行文件（ffmpeg, ffprobe 等）
+```
+ffmpeg-source/
+├── build_mac.sh          # 构建脚本
+├── ffmpeg_sources/       # 外部库源代码
+│   ├── nasm/             # NASM 源码
+│   ├── yasm/             # Yasm 源码
+│   ├── x264/             # libx264 源码
+│   ├── x265_git/         # libx265 源码
+│   ├── fdk-aac/          # libfdk_aac 源码
+│   ├── lame/             # libmp3lame 源码
+│   ├── opus/             # libopus 源码
+│   ├── libvpx/           # libvpx 源码
+│   ├── aom/              # libaom 源码
+│   ├── openh264/         # openh264 源码
+│   ├── kvazaar/          # Kvazaar 源码
+│   ├── SVT-AV1/          # SVT-AV1 源码
+│   └── dav1d/            # dav1d 源码
+└── ffmpeg_build/         # 所有编译后的文件（统一安装目录）
+    ├── bin/              # 所有可执行文件
+    │   ├── ffmpeg        # FFmpeg 主程序
+    │   ├── ffprobe       # FFmpeg 探测工具
+    │   ├── ffplay        # FFmpeg 播放器
+    │   ├── x264          # x264 编码器
+    │   ├── lame          # MP3 编码器
+    │   ├── nasm          # NASM 汇编器
+    │   └── yasm          # Yasm 汇编器
+    ├── lib/              # 所有库文件
+    │   ├── *.a           # 静态库文件
+    │   └── pkgconfig/    # pkg-config 配置文件
+    ├── include/          # 所有头文件
+    └── share/            # 其他共享文件
+```
+
+**重要说明**：
+- 所有编译产物（可执行文件、库文件、头文件）都统一安装到 `ffmpeg_build/` 目录下
+- 这种设计便于管理和清理，删除 `ffmpeg_build/` 和 `ffmpeg_sources/` 即可完全清理构建产物
+- 不会影响系统目录，完全非侵入式安装
 
 ## 使用构建的 FFmpeg
 
@@ -105,20 +146,20 @@ make install
 
 临时添加（当前终端会话）：
 ```bash
-export PATH="$(pwd)/bin:$PATH"
+export PATH="$(pwd)/ffmpeg_build/bin:$PATH"
 ```
 
 永久添加（推荐）：
 ```bash
-echo 'export PATH="'$(pwd)'/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="'$(pwd)'/ffmpeg_build/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
 ### 验证安装
 
 ```bash
-./bin/ffmpeg -version
-./bin/ffprobe -version
+./ffmpeg_build/bin/ffmpeg -version
+./ffmpeg_build/bin/ffprobe -version
 ```
 
 ## 包含的编码器
@@ -191,11 +232,13 @@ git checkout stable
 
 ## 清理构建
 
-删除构建目录和二进制文件：
+删除构建目录和源代码目录即可完全清理：
 
 ```bash
-rm -rf ffmpeg_build ffmpeg_sources bin
+rm -rf ffmpeg_build ffmpeg_sources
 ```
+
+**注意**：所有编译产物都在 `ffmpeg_build/` 目录下，删除该目录即可清理所有构建文件。
 
 ## 故障排除
 
@@ -260,11 +303,13 @@ chmod +x configure
 ## 许可证说明
 
 - FFmpeg: LGPL/GPL
-- libx264, libx265: GPL
+- libx264, libx265, Kvazaar: GPL
 - libfdk_aac: Fraunhofer FDK AAC License (非自由软件)
 - libmp3lame: LGPL
 - libopus: BSD
 - libvpx: BSD
+- libaom, SVT-AV1, dav1d: BSD
+- openh264: BSD
 
 使用 `--enable-nonfree` 和 `--enable-gpl` 选项意味着你接受相应的许可证条款。
 

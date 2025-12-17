@@ -262,6 +262,10 @@ ninja -C build install
 # FFmpeg
 echo -e "${GREEN}[16/16] 编译 FFmpeg...${NC}"
 cd "$SCRIPT_DIR"
+# 所有文件安装到 ffmpeg_build 目录：
+# - 可执行文件: ffmpeg_build/bin (通过 --bindir)
+# - 库文件: ffmpeg_build/lib (通过 --prefix)
+# - 头文件: ffmpeg_build/include (通过 --prefix)
 PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --prefix="$FFMPEG_BUILD" \
     --pkg-config-flags="--static" \

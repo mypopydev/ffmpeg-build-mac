@@ -52,6 +52,61 @@
    ./build_mac.sh
    ```
 
+5. **使用构建的 FFmpeg**
+
+   构建完成后，所有文件都安装在 `ffmpeg_build/` 目录下：
+   
+   ```bash
+   # 添加到 PATH
+   export PATH="/path/to/ffmpeg-source/ffmpeg_build/bin:$PATH"
+   
+   # 验证安装
+   ffmpeg -version
+   ffprobe -version
+   ```
+
+## 项目结构
+
+构建完成后，会在 FFmpeg 源码目录中创建以下目录结构：
+
+```
+ffmpeg-source/
+├── build_mac.sh          # 构建脚本
+├── ffmpeg_sources/       # 外部库源代码
+│   ├── nasm/             # NASM 源码
+│   ├── yasm/             # Yasm 源码
+│   ├── x264/             # libx264 源码
+│   ├── x265_git/         # libx265 源码
+│   ├── fdk-aac/          # libfdk_aac 源码
+│   ├── lame/             # libmp3lame 源码
+│   ├── opus/             # libopus 源码
+│   ├── libvpx/           # libvpx 源码
+│   ├── aom/              # libaom 源码
+│   ├── openh264/         # openh264 源码
+│   ├── kvazaar/          # Kvazaar 源码
+│   ├── SVT-AV1/          # SVT-AV1 源码
+│   └── dav1d/            # dav1d 源码
+└── ffmpeg_build/         # 所有编译后的文件（统一安装目录）
+    ├── bin/              # 所有可执行文件
+    │   ├── ffmpeg        # FFmpeg 主程序
+    │   ├── ffprobe       # FFmpeg 探测工具
+    │   ├── ffplay        # FFmpeg 播放器
+    │   ├── x264          # x264 编码器
+    │   ├── lame          # MP3 编码器
+    │   ├── nasm          # NASM 汇编器
+    │   └── yasm          # Yasm 汇编器
+    ├── lib/              # 所有库文件
+    │   ├── *.a           # 静态库文件
+    │   └── pkgconfig/    # pkg-config 配置文件
+    ├── include/          # 所有头文件
+    └── share/            # 其他共享文件
+```
+
+**重要说明**：
+- 所有编译产物（可执行文件、库文件、头文件）都统一安装到 `ffmpeg_build/` 目录下
+- 这种设计便于管理和清理，删除 `ffmpeg_build/` 和 `ffmpeg_sources/` 即可完全清理构建产物
+- 不会影响系统目录，完全非侵入式安装
+
 ## 包含的编码器
 
 所有库均使用最新开发版本：

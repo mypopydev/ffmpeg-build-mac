@@ -45,6 +45,7 @@ brew install \
     cmake \
     freetype \
     git \
+    git-svn \
     libtool \
     make \
     nasm \
@@ -135,14 +136,15 @@ autoreconf -fiv
 make -j$(sysctl -n hw.ncpu)
 make install
 
-# libmp3lame (使用最新开发版本)
+# libmp3lame (使用最新开发版本，从 SVN 通过 git-svn)
 echo -e "${YELLOW}[8/12] 编译 libmp3lame (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "lame" ]; then
-    git clone https://github.com/lame-dev/lame.git
+    echo "使用 git-svn 从 SVN 仓库克隆 lame..."
+    git svn clone https://svn.code.sf.net/p/lame/svn/trunk/lame lame
 fi
 cd lame
-git pull || true
+git svn rebase || true
 autoreconf -fiv || ./autogen.sh || true
 ./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR" --disable-shared --enable-nasm
 make -j$(sysctl -n hw.ncpu)

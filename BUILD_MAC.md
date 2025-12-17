@@ -44,6 +44,7 @@ brew install \
     cmake \
     freetype \
     git \
+    git-svn \
     libtool \
     make \
     nasm \
@@ -132,7 +133,7 @@ source ~/.zshrc
 
 - **音频编码器:**
   - AAC (libfdk_aac) - 从 Git 仓库获取最新开发版本
-  - MP3 (libmp3lame) - 从 Git 仓库获取最新开发版本
+  - MP3 (libmp3lame) - 从 SVN 仓库通过 git-svn 获取最新开发版本
   - Opus (libopus) - 从 Git 仓库获取最新开发版本
 
 - **汇编器:**
@@ -157,7 +158,7 @@ cd yasm && git pull && cd ..
 cd x264 && git pull && cd ..
 cd x265_git && git pull && cd ..
 cd fdk-aac && git pull && cd ..
-cd lame && git pull && cd ..
+cd lame && git svn rebase && cd ..
 cd opus && git pull && cd ..
 cd libvpx && git pull && cd ..
 cd aom && git pull && cd ..

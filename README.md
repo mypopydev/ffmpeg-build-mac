@@ -93,8 +93,6 @@ ffmpeg-source/
     │   ├── ffplay        # FFmpeg 播放器
     │   ├── x264          # x264 编码器
     │   ├── lame          # MP3 编码器
-    │   ├── nasm          # NASM 汇编器
-    │   └── yasm          # Yasm 汇编器
     ├── lib/              # 所有库文件
     │   ├── *.a           # 静态库文件
     │   └── pkgconfig/    # pkg-config 配置文件

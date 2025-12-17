@@ -38,7 +38,7 @@ if ! command -v brew &> /dev/null; then
 fi
 
 # 安装依赖
-echo -e "${YELLOW}[1/16] 安装依赖包...${NC}"
+echo -e "${YELLOW}[1/15] 安装依赖包...${NC}"
 brew install \
     autoconf \
     automake \
@@ -59,41 +59,25 @@ brew install \
     || echo -e "${YELLOW}某些包可能已安装，继续...${NC}"
 
 # 创建目录
-echo -e "${YELLOW}[2/16] 创建构建目录...${NC}"
+echo -e "${YELLOW}[2/15] 创建构建目录...${NC}"
 mkdir -p "$FFMPEG_SOURCES"
 mkdir -p "$FFMPEG_BUILD"/{bin,lib,include,share}
 
-# 添加 bin 目录到 PATH
-export PATH="$BIN_DIR:$PATH"
-
-# NASM (使用最新开发版本)
-echo -e "${YELLOW}[3/16] 编译 NASM (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "nasm" ]; then
-    git clone https://github.com/netwide-assembler/nasm.git
+# 检查 nasm 和 yasm（使用系统安装的版本）
+echo -e "${YELLOW}[3/15] 检查汇编器工具...${NC}"
+if ! command -v nasm &> /dev/null; then
+    echo -e "${RED}错误: 未找到 nasm，请确保已通过 brew 安装${NC}"
+    exit 1
 fi
-cd nasm
-git pull || true
-./autogen.sh
-./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR"
-make -j$(sysctl -n hw.ncpu)
-make install
-
-# Yasm (使用最新开发版本)
-echo -e "${YELLOW}[4/16] 编译 Yasm (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "yasm" ]; then
-    git clone https://github.com/yasm/yasm.git
+if ! command -v yasm &> /dev/null; then
+    echo -e "${RED}错误: 未找到 yasm，请确保已通过 brew 安装${NC}"
+    exit 1
 fi
-cd yasm
-git pull || true
-autoreconf -fiv
-./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR"
-make -j$(sysctl -n hw.ncpu)
-make install
+echo -e "${GREEN}✓ NASM 版本: $(nasm -v | head -n1)${NC}"
+echo -e "${GREEN}✓ Yasm 版本: $(yasm --version | head -n1)${NC}"
 
 # libx264 (使用最新开发版本)
-echo -e "${YELLOW}[5/16] 编译 libx264 (最新开发版本)...${NC}"
+echo -e "${YELLOW}[4/15] 编译 libx264 (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "x264" ]; then
     git clone https://code.videolan.org/videolan/x264.git
@@ -109,7 +93,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libx265 (使用最新开发版本)
-echo -e "${YELLOW}[6/16] 编译 libx265 (最新开发版本)...${NC}"
+echo -e "${YELLOW}[5/15] 编译 libx265 (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "x265_git" ]; then
     git clone https://bitbucket.org/multicoreware/x265_git
@@ -126,7 +110,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libfdk_aac (使用最新开发版本)
-echo -e "${YELLOW}[7/16] 编译 libfdk_aac (最新开发版本)...${NC}"
+echo -e "${YELLOW}[6/15] 编译 libfdk_aac (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "fdk-aac" ]; then
     git clone https://github.com/mstorsjo/fdk-aac
@@ -139,7 +123,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libmp3lame (使用最新开发版本，从 SVN 通过 git-svn)
-echo -e "${YELLOW}[8/16] 编译 libmp3lame (最新开发版本)...${NC}"
+echo -e "${YELLOW}[7/15] 编译 libmp3lame (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "lame" ]; then
     echo "使用 git-svn 从 SVN 仓库克隆 lame..."
@@ -153,7 +137,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libopus (使用最新开发版本)
-echo -e "${YELLOW}[9/16] 编译 libopus (最新开发版本)...${NC}"
+echo -e "${YELLOW}[8/15] 编译 libopus (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "opus" ]; then
     git clone https://github.com/xiph/opus.git
@@ -166,7 +150,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libvpx (使用最新开发版本)
-echo -e "${YELLOW}[10/16] 编译 libvpx (最新开发版本)...${NC}"
+echo -e "${YELLOW}[9/15] 编译 libvpx (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "libvpx" ]; then
     git clone https://chromium.googlesource.com/webm/libvpx.git
@@ -182,7 +166,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # libaom (使用最新开发版本)
-echo -e "${YELLOW}[11/16] 编译 libaom (最新开发版本)...${NC}"
+echo -e "${YELLOW}[10/15] 编译 libaom (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "aom" ]; then
     git clone https://aomedia.googlesource.com/aom
@@ -201,7 +185,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # openh264 (使用最新开发版本)
-echo -e "${YELLOW}[12/16] 编译 openh264 (最新开发版本)...${NC}"
+echo -e "${YELLOW}[11/15] 编译 openh264 (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "openh264" ]; then
     git clone https://github.com/cisco/openh264.git
@@ -212,7 +196,7 @@ make -j$(sysctl -n hw.ncpu) PREFIX="$FFMPEG_BUILD"
 make install PREFIX="$FFMPEG_BUILD"
 
 # Kvazaar (使用最新开发版本)
-echo -e "${YELLOW}[13/16] 编译 Kvazaar (最新开发版本)...${NC}"
+echo -e "${YELLOW}[12/15] 编译 Kvazaar (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "kvazaar" ]; then
     git clone https://github.com/ultravideo/kvazaar.git
@@ -225,7 +209,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # SVT-AV1 (使用最新开发版本)
-echo -e "${YELLOW}[14/16] 编译 SVT-AV1 (最新开发版本)...${NC}"
+echo -e "${YELLOW}[13/15] 编译 SVT-AV1 (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "SVT-AV1" ]; then
     git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git
@@ -244,7 +228,7 @@ make -j$(sysctl -n hw.ncpu)
 make install
 
 # dav1d (使用最新开发版本)
-echo -e "${YELLOW}[15/16] 编译 dav1d (最新开发版本)...${NC}"
+echo -e "${YELLOW}[14/15] 编译 dav1d (最新开发版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "dav1d" ]; then
     git clone https://code.videolan.org/videolan/dav1d.git
@@ -260,7 +244,7 @@ ninja -C build
 ninja -C build install
 
 # FFmpeg
-echo -e "${GREEN}[16/16] 编译 FFmpeg...${NC}"
+echo -e "${GREEN}[15/15] 编译 FFmpeg...${NC}"
 cd "$SCRIPT_DIR"
 # 所有文件安装到 ffmpeg_build 目录：
 # - 可执行文件: ffmpeg_build/bin (通过 --bindir)

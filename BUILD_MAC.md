@@ -179,8 +179,8 @@ source ~/.zshrc
   - Opus (libopus) - 从 Git 仓库获取最新开发版本
 
 - **汇编器:**
-  - NASM - 从 GitHub 获取最新开发版本
-  - Yasm - 从 GitHub 获取最新开发版本
+  - NASM - 使用系统安装的版本（通过 Homebrew）
+  - Yasm - 使用系统安装的版本（通过 Homebrew）
 
 **注意:** 使用开发版本意味着你将获得最新的功能和修复，但也可能包含未完全测试的代码。如果遇到问题，可以考虑切换到稳定分支。
 
@@ -194,9 +194,7 @@ source ~/.zshrc
 # 更新所有外部库到最新开发版本
 cd ffmpeg_sources
 
-# 更新各个库
-cd nasm && git pull && cd ..
-cd yasm && git pull && cd ..
+# 更新各个库（nasm 和 yasm 使用系统版本，无需更新）
 cd x264 && git pull && cd ..
 cd x265_git && git pull && cd ..
 cd fdk-aac && git pull && cd ..

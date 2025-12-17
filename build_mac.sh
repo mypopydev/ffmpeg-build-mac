@@ -62,7 +62,6 @@ brew install \
 echo -e "${YELLOW}[2/16] 创建构建目录...${NC}"
 mkdir -p "$FFMPEG_SOURCES"
 mkdir -p "$FFMPEG_BUILD"/{bin,lib,include,share}
-mkdir -p "$BIN_DIR"
 
 # 添加 bin 目录到 PATH
 export PATH="$BIN_DIR:$PATH"
@@ -293,7 +292,7 @@ hash -r
 
 echo ""
 echo -e "${GREEN}=== 构建完成！ ===${NC}"
-echo "所有文件已安装到: $FFMPEG_BUILD"
+echo "所有文件已安装:"
 echo "  - 可执行文件: $BIN_DIR"
 echo "  - 库文件: $FFMPEG_BUILD/lib"
 echo "  - 头文件: $FFMPEG_BUILD/include"

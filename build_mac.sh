@@ -87,7 +87,7 @@ git pull || true
 PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --prefix="$FFMPEG_BUILD" \
     --bindir="$BIN_DIR" \
-    --enable-static \
+    --enable-shared \
     --enable-pic
 make -j$(sysctl -n hw.ncpu)
 make install
@@ -104,7 +104,7 @@ mkdir -p build/macos
 cd build/macos
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED:bool=off \
+    -DENABLE_SHARED:bool=on \
     ../../source
 make -j$(sysctl -n hw.ncpu)
 make install
@@ -118,7 +118,7 @@ fi
 cd fdk-aac
 git pull || true
 autoreconf -fiv
-./configure --prefix="$FFMPEG_BUILD" --disable-shared
+./configure --prefix="$FFMPEG_BUILD" --enable-shared
 make -j$(sysctl -n hw.ncpu)
 make install
 
@@ -132,7 +132,7 @@ fi
 cd lame
 git svn rebase || true
 autoreconf -fiv || ./autogen.sh || true
-./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR" --disable-shared --enable-nasm
+./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR" --enable-shared --enable-nasm
 make -j$(sysctl -n hw.ncpu)
 make install
 
@@ -145,7 +145,7 @@ fi
 cd opus
 git pull || true
 ./autogen.sh
-./configure --prefix="$FFMPEG_BUILD" --disable-shared
+./configure --prefix="$FFMPEG_BUILD" --enable-shared
 make -j$(sysctl -n hw.ncpu)
 make install
 
@@ -161,6 +161,7 @@ git pull || true
     --disable-examples \
     --disable-unit-tests \
     --enable-vp9-highbitdepth \
+    --enable-shared \
     --as=yasm
 make -j$(sysctl -n hw.ncpu)
 make install
@@ -178,7 +179,7 @@ mkdir -p build
 cd build
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED=0 \
+    -DENABLE_SHARED=1 \
     -DENABLE_NASM=on \
     ..
 make -j$(sysctl -n hw.ncpu)
@@ -204,7 +205,7 @@ fi
 cd kvazaar
 git pull || true
 ./autogen.sh
-./configure --prefix="$FFMPEG_BUILD" --disable-shared
+./configure --prefix="$FFMPEG_BUILD" --enable-shared
 make -j$(sysctl -n hw.ncpu)
 make install
 
@@ -221,7 +222,7 @@ mkdir -p build
 cd build
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED=0 \
+    -DENABLE_SHARED=1 \
     -DCMAKE_BUILD_TYPE=Release \
     ..
 make -j$(sysctl -n hw.ncpu)
@@ -239,24 +240,24 @@ rm -rf build
 meson setup build \
     --prefix="$FFMPEG_BUILD" \
     --buildtype=release \
-    --default-library=static
+    --default-library=shared
 ninja -C build
 ninja -C build install
 
 # FFmpeg
 echo -e "${GREEN}[15/15] 编译 FFmpeg...${NC}"
 cd "$SCRIPT_DIR"
-# 所有文件安装到 ffmpeg_build 目录：
+# 所有文件安装到 ffmpeg_build 目录（动态链接）：
 # - 可执行文件: ffmpeg_build/bin (通过 --bindir)
-# - 库文件: ffmpeg_build/lib (通过 --prefix)
+# - 库文件: ffmpeg_build/lib (通过 --prefix，动态库 .dylib)
 # - 头文件: ffmpeg_build/include (通过 --prefix)
 PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --prefix="$FFMPEG_BUILD" \
-    --pkg-config-flags="--static" \
     --extra-cflags="-I$FFMPEG_BUILD/include" \
     --extra-ldflags="-L$FFMPEG_BUILD/lib" \
     --extra-libs="-lpthread -lm" \
     --bindir="$BIN_DIR" \
+    --enable-shared \
     --enable-gpl \
     --enable-libfdk_aac \
     --enable-libfreetype \
@@ -280,13 +281,14 @@ hash -r
 
 echo ""
 echo -e "${GREEN}=== 构建完成！ ===${NC}"
-echo "所有文件已安装:"
+echo "所有文件已安装（动态链接）:"
 echo "  - 可执行文件: $BIN_DIR"
-echo "  - 库文件: $FFMPEG_BUILD/lib"
+echo "  - 动态库文件: $FFMPEG_BUILD/lib"
 echo "  - 头文件: $FFMPEG_BUILD/include"
 echo ""
-echo "使用以下命令添加到 PATH:"
+echo "使用以下命令添加到环境变量:"
 echo "  export PATH=\"$BIN_DIR:\$PATH\""
+echo "  export DYLD_LIBRARY_PATH=\"$FFMPEG_BUILD/lib:\$DYLD_LIBRARY_PATH\""
 echo ""
 echo "验证安装:"
 echo "  $BIN_DIR/ffmpeg -version"

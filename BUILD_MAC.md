@@ -2,6 +2,8 @@
 
 本指南基于 [CentOS 编译指南](https://trac.ffmpeg.org/wiki/CompilationGuide/Centos)，适配 macOS 系统。
 
+**注意**: 本构建脚本使用动态链接，所有库和 FFmpeg 都构建为共享库（.dylib）。需要设置 `DYLD_LIBRARY_PATH` 环境变量以便运行时找到动态库。
+
 ## 前置要求
 
 1. **macOS** (推荐 macOS 10.15 或更高版本)
@@ -30,6 +32,7 @@ chmod +x build_mac.sh
 - 安装所有必需的依赖
 - 编译外部库（x264, x265, openh264, Kvazaar, fdk-aac, lame, opus, vpx, aom, SVT-AV1, dav1d）
 - 编译 FFmpeg
+- 所有库和 FFmpeg 都构建为动态链接（共享库）
 
 ### 方法 2: 手动构建
 
@@ -73,11 +76,11 @@ mkdir -p ffmpeg_build/{bin,lib,include,share}
 ```bash
 PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig" ./configure \
     --prefix="./ffmpeg_build" \
-    --pkg-config-flags="--static" \
     --extra-cflags="-I./ffmpeg_build/include" \
     --extra-ldflags="-L./ffmpeg_build/lib" \
     --extra-libs="-lpthread -lm" \
     --bindir="./ffmpeg_build/bin" \
+    --enable-shared \
     --enable-gpl \
     --enable-libfdk_aac \
     --enable-libfreetype \
@@ -129,7 +132,7 @@ ffmpeg-source/
     │   ├── nasm          # NASM 汇编器
     │   └── yasm          # Yasm 汇编器
     ├── lib/              # 所有库文件
-    │   ├── *.a           # 静态库文件
+    │   ├── *.dylib       # 动态库文件（macOS）
     │   └── pkgconfig/    # pkg-config 配置文件
     ├── include/          # 所有头文件
     └── share/            # 其他共享文件
@@ -142,18 +145,24 @@ ffmpeg-source/
 
 ## 使用构建的 FFmpeg
 
-### 添加到 PATH
+### 添加到 PATH 和动态库路径
+
+由于使用动态链接，需要同时设置 PATH 和 DYLD_LIBRARY_PATH：
 
 临时添加（当前终端会话）：
 ```bash
 export PATH="$(pwd)/ffmpeg_build/bin:$PATH"
+export DYLD_LIBRARY_PATH="$(pwd)/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
 ```
 
 永久添加（推荐）：
 ```bash
 echo 'export PATH="'$(pwd)'/ffmpeg_build/bin:$PATH"' >> ~/.zshrc
+echo 'export DYLD_LIBRARY_PATH="'$(pwd)'/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
+
+**注意**: `DYLD_LIBRARY_PATH` 是 macOS 上用于指定动态库搜索路径的环境变量，必须设置才能正确运行 FFmpeg。
 
 ### 验证安装
 
@@ -262,6 +271,16 @@ brew install yasm
 ```bash
 export PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig:$PKG_CONFIG_PATH"
 ```
+
+### 问题: 运行时找不到动态库（dyld: Library not loaded）
+
+**解决方案:**
+由于使用动态链接，需要设置 `DYLD_LIBRARY_PATH`：
+```bash
+export DYLD_LIBRARY_PATH="./ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
+```
+
+或者使用 `install_name_tool` 修改库的安装路径（高级用法）。
 
 ### 问题: 编译 x265 失败
 

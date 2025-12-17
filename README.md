@@ -10,6 +10,7 @@
 - ✅ 支持多种音频编码器：AAC, MP3, Opus
 - ✅ 完全自动化构建流程
 - ✅ 非侵入式安装（所有文件安装在项目目录中）
+- ✅ 动态链接构建（所有库构建为共享库）
 
 ## 快速开始
 
@@ -54,16 +55,19 @@
 
 5. **使用构建的 FFmpeg**
 
-   构建完成后，所有文件都安装在 `ffmpeg_build/` 目录下：
+   构建完成后，所有文件都安装在 `ffmpeg_build/` 目录下（动态链接）：
    
    ```bash
-   # 添加到 PATH
+   # 添加到 PATH 和动态库路径
    export PATH="/path/to/ffmpeg-source/ffmpeg_build/bin:$PATH"
+   export DYLD_LIBRARY_PATH="/path/to/ffmpeg-source/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
    
    # 验证安装
    ffmpeg -version
    ffprobe -version
    ```
+   
+   **注意**: 由于使用动态链接，需要设置 `DYLD_LIBRARY_PATH` 以便 macOS 能够找到动态库文件。
 
 ## 项目结构
 
@@ -94,7 +98,7 @@ ffmpeg-source/
     │   ├── x264          # x264 编码器
     │   ├── lame          # MP3 编码器
     ├── lib/              # 所有库文件
-    │   ├── *.a           # 静态库文件
+    │   ├── *.dylib       # 动态库文件（macOS）
     │   └── pkgconfig/    # pkg-config 配置文件
     ├── include/          # 所有头文件
     └── share/            # 其他共享文件

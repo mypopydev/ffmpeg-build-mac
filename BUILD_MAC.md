@@ -29,8 +29,9 @@ chmod +x build_mac.sh
 ```
 
 构建脚本会自动：
-- 安装所有必需的依赖
-- 编译外部库（x264, x265, openh264, Kvazaar, fdk-aac, lame, opus, vpx, aom, SVT-AV1, dav1d）
+- 检测并克隆 FFmpeg 源码（如果需要）
+- 安装所有必需的依赖（包括 vulkan-headers）
+- 编译外部库（x264, x265, openh264, Kvazaar, fdk-aac, lame, opus, vpx, aom, SVT-AV1, dav1d, libplacebo）
 - 编译 FFmpeg
 - 所有库和 FFmpeg 都构建为动态链接（共享库）
 
@@ -47,7 +48,6 @@ brew install \
     cmake \
     freetype \
     git \
-    git-svn \
     libtool \
     make \
     meson \
@@ -55,6 +55,7 @@ brew install \
     ninja \
     pkg-config \
     python3 \
+    vulkan-headers \
     yasm \
     zlib \
     bzip2
@@ -94,6 +95,7 @@ PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig" ./configure \
     --enable-libkvazaar \
     --enable-libsvtav1 \
     --enable-libdav1d \
+    --enable-libplacebo \
     --enable-nonfree \
     --enable-version3
 
@@ -121,7 +123,8 @@ ffmpeg-source/
 │   ├── openh264/         # openh264 源码
 │   ├── kvazaar/          # Kvazaar 源码
 │   ├── SVT-AV1/          # SVT-AV1 源码
-│   └── dav1d/            # dav1d 源码
+│   ├── dav1d/            # dav1d 源码
+│   └── libplacebo/       # libplacebo 源码
 └── ffmpeg_build/         # 所有编译后的文件（统一安装目录）
     ├── bin/              # 所有可执行文件
     │   ├── ffmpeg        # FFmpeg 主程序
@@ -184,8 +187,11 @@ source ~/.zshrc
 
 - **音频编码器:**
   - AAC (libfdk_aac) - 从 Git 仓库获取最新开发版本
-  - MP3 (libmp3lame) - 从 SVN 仓库通过 git-svn 获取最新开发版本
+  - MP3 (libmp3lame) - 从 GitHub 仓库获取最新开发版本
   - Opus (libopus) - 从 Git 仓库获取最新开发版本
+
+- **视频处理:**
+  - libplacebo - GPU 加速视频处理和渲染，从 Git 仓库获取最新开发版本
 
 - **汇编器:**
   - NASM - 使用系统安装的版本（通过 Homebrew）
@@ -207,7 +213,7 @@ cd ffmpeg_sources
 cd x264 && git pull && cd ..
 cd x265_git && git pull && cd ..
 cd fdk-aac && git pull && cd ..
-cd lame && git svn rebase && cd ..
+cd lame && git pull && cd ..
 cd opus && git pull && cd ..
 cd libvpx && git pull && cd ..
 cd aom && git pull && cd ..
@@ -215,6 +221,7 @@ cd openh264 && git pull && cd ..
 cd kvazaar && git pull && cd ..
 cd SVT-AV1 && git pull && cd ..
 cd dav1d && git pull && cd ..
+cd libplacebo && git pull && git submodule update --init && cd ..
 ```
 
 然后重新运行 `build_mac.sh` 脚本，它会自动重新编译所有更新的库。
@@ -294,6 +301,24 @@ cmake -G "Unix Makefiles" \
     ../../source
 ```
 
+### 问题: libplacebo 编译失败（找不到 glad）
+
+**解决方案:**
+libplacebo 需要初始化 git submodule：
+```bash
+cd ffmpeg_sources/libplacebo
+git submodule update --init
+```
+
+### 问题: FFmpeg configure 找不到 libplacebo
+
+**解决方案:**
+确保安装了 vulkan-headers 并设置了正确的包含路径：
+```bash
+brew install vulkan-headers
+# 脚本会自动检测 Vulkan 头文件路径
+```
+
 ### 问题: 权限错误
 
 **解决方案:**
@@ -327,6 +352,7 @@ chmod +x configure
 - libvpx: BSD
 - libaom, SVT-AV1, dav1d: BSD
 - openh264: BSD
+- libplacebo: LGPL
 
 使用 `--enable-nonfree` 和 `--enable-gpl` 选项意味着你接受相应的许可证条款。
 

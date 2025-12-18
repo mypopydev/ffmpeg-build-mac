@@ -8,9 +8,11 @@
 - ✅ 从 Git 仓库获取所有第三方库的最新开发版本
 - ✅ 支持多种视频编码器：H.264, H.265, VP8/VP9, AV1
 - ✅ 支持多种音频编码器：AAC, MP3, Opus
+- ✅ 支持 libplacebo（GPU 加速视频处理）
 - ✅ 完全自动化构建流程
 - ✅ 非侵入式安装（所有文件安装在项目目录中）
 - ✅ 动态链接构建（所有库构建为共享库）
+- ✅ 自动检测 FFmpeg 源码目录
 
 ## 快速开始
 
@@ -30,28 +32,25 @@
 
 1. **克隆或下载此项目**
 
-2. **进入 FFmpeg 源码目录**
-
-   此脚本需要在 FFmpeg 源码目录中运行。如果你还没有 FFmpeg 源码：
-
    ```bash
-   cd /path/to/ffmpeg-source
-   git clone https://git.ffmpeg.org/ffmpeg.git .
+   git clone git@github.com:mypopydev/ffmpeg-build-mac.git
+   cd ffmpeg-build-mac
    ```
 
-3. **复制构建脚本到 FFmpeg 源码目录**
+2. **运行构建脚本**
+
+   脚本会自动检测并克隆 FFmpeg 源码（如果需要）：
 
    ```bash
-   cp build_mac.sh /path/to/ffmpeg-source/
-   ```
-
-4. **运行构建脚本**
-
-   ```bash
-   cd /path/to/ffmpeg-source
    chmod +x build_mac.sh
    ./build_mac.sh
    ```
+
+   脚本会自动：
+   - 检测 FFmpeg 源码目录（如果不存在会自动克隆）
+   - 安装所有必需的依赖
+   - 编译所有外部库
+   - 编译 FFmpeg
 
 5. **使用构建的 FFmpeg**
 
@@ -89,7 +88,8 @@ ffmpeg-source/
 │   ├── openh264/         # openh264 源码
 │   ├── kvazaar/          # Kvazaar 源码
 │   ├── SVT-AV1/          # SVT-AV1 源码
-│   └── dav1d/            # dav1d 源码
+│   ├── dav1d/            # dav1d 源码
+│   └── libplacebo/       # libplacebo 源码
 └── ffmpeg_build/         # 所有编译后的文件（统一安装目录）
     ├── bin/              # 所有可执行文件
     │   ├── ffmpeg        # FFmpeg 主程序
@@ -123,6 +123,9 @@ ffmpeg-source/
   - AAC (libfdk_aac)
   - MP3 (libmp3lame)
   - Opus (libopus)
+
+- **视频处理:**
+  - libplacebo (GPU 加速视频处理和渲染)
 
 ## 详细文档
 

@@ -57,7 +57,7 @@ FFmpeg Mac 构建脚本 v2.0
 
 支持的库:
     x264, x265, fdk-aac, lame, opus, libvpx, libaom,
-    openh264, kvazaar, svtav1, dav1d, ffmpeg
+    openh264, kvazaar, svtav1, dav1d, libplacebo, ffmpeg
 
 EOF
 }

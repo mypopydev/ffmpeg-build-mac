@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # Define build groups (libraries that can be built in parallel)
-# Group 1: No dependencies - all audio/video codecs without interdependencies
+# Group 1: No dependencies - all audio/video codecs and processing libraries without interdependencies
 declare -a GROUP_1=(
     "x264"
     "x265"
@@ -22,6 +22,7 @@ declare -a GROUP_1=(
     "kvazaar"
     "svtav1"
     "dav1d"
+    "libplacebo"
 )
 
 # Group 2: FFmpeg (depends on all libraries in Group 1)

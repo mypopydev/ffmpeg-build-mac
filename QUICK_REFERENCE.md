@@ -138,6 +138,10 @@ OPUS_VERSION="v1.4"
 - `lame` - MP3 编码器
 - `opus` - Opus 编码器
 
+### 视频处理
+
+- `libplacebo` - GPU 加速视频处理库
+
 ### FFmpeg
 
 - `ffmpeg` - FFmpeg 主程序（依赖所有上述库）

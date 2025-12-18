@@ -177,7 +177,7 @@ source ./env_setup.sh --permanent
 ./build_mac.sh --lib x264
 ```
 
-## 包含的编码器
+## 包含的编码器和库
 
 - **视频编码器:**
   - H.264 (libx264, openh264)
@@ -189,6 +189,9 @@ source ./env_setup.sh --permanent
   - AAC (libfdk_aac)
   - MP3 (libmp3lame)
   - Opus (libopus)
+
+- **视频处理:**
+  - libplacebo (GPU 加速视频处理)
 
 ## 高级用法
 

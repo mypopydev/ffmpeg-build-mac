@@ -226,13 +226,13 @@ get_dependencies() {
     local lib_name="$1"
 
     case "$lib_name" in
-        x264|x265|fdk-aac|lame|opus|libvpx|libaom|openh264|kvazaar|svtav1|dav1d)
+        x264|x265|fdk-aac|lame|opus|libvpx|libaom|openh264|kvazaar|svtav1|dav1d|libplacebo)
             # These libraries have no dependencies
             echo ""
             ;;
         ffmpeg)
-            # FFmpeg depends on all codec libraries
-            echo "x264 x265 fdk-aac lame opus libvpx libaom openh264 kvazaar svtav1 dav1d"
+            # FFmpeg depends on all codec libraries and video processing libraries
+            echo "x264 x265 fdk-aac lame opus libvpx libaom openh264 kvazaar svtav1 dav1d libplacebo"
             ;;
         *)
             echo ""

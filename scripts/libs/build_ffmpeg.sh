@@ -55,6 +55,7 @@ build_ffmpeg() {
         --enable-libkvazaar \
         --enable-libsvtav1 \
         --enable-libdav1d \
+        --enable-libplacebo \
         --enable-nonfree \
         --enable-version3
 

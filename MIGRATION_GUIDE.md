@@ -1,6 +1,6 @@
 # 迁移指南：从 v1.0 到 v2.0
 
-本文档帮助你从旧版 `build_mac.sh` 迁移到新版 `build_mac_v2.sh`。
+本文档帮助你从旧版构建系统迁移到新版 v2.0。
 
 ## 主要变化
 
@@ -26,8 +26,8 @@ v1.0:
 └── BUILD_MAC.md
 
 v2.0:
-├── build_mac.sh         # 旧版（保留）
-├── build_mac_v2.sh      # 新版主脚本
+├── build_mac_v1_backup.sh # v1备份（保留）
+├── build_mac.sh           # 新版主脚本（v2.0）
 ├── env_setup.sh         # 新增：环境设置
 ├── config/              # 新增：配置目录
 │   └── versions.conf    # 新增：版本配置
@@ -60,17 +60,17 @@ git pull origin main
 
 ```bash
 # v2.0 会检测已有的构建，跳过不必要的重新编译
-./build_mac_v2.sh
+./build_mac.sh
 ```
 
 如果是全新开始：
 
 ```bash
 # 清理旧构建（可选）
-./build_mac_v2.sh --clean all
+./build_mac.sh --clean all
 
 # 开始新构建
-./build_mac_v2.sh
+./build_mac.sh
 ```
 
 ### 步骤 4: 设置环境变量
@@ -102,7 +102,7 @@ source ./env_setup.sh -p
 
 **v2.0:**
 ```bash
-./build_mac_v2.sh
+./build_mac.sh
 # 首次: ~15-25分钟（并行构建）
 # 后续: ~10秒（无变更）或 5-15分钟（有变更）
 ```
@@ -119,7 +119,7 @@ rm -rf ffmpeg_build ffmpeg_sources
 **v2.0:**
 ```bash
 # 使用 --force 选项
-./build_mac_v2.sh --force
+./build_mac.sh --force
 ```
 
 ### 只构建某个库
@@ -135,7 +135,7 @@ vim build_mac.sh
 **v2.0:**
 ```bash
 # 使用 --lib 选项
-./build_mac_v2.sh --lib x264 --lib x265
+./build_mac.sh --lib x264 --lib x265
 ```
 
 ### 清理构建
@@ -148,13 +148,13 @@ rm -rf ffmpeg_build ffmpeg_sources
 **v2.0:**
 ```bash
 # 清理所有
-./build_mac_v2.sh --clean all
+./build_mac.sh --clean all
 
 # 只清理构建产物
-./build_mac_v2.sh --clean build
+./build_mac.sh --clean build
 
 # 只清理源码
-./build_mac_v2.sh --clean sources
+./build_mac.sh --clean sources
 ```
 
 ## 配置变化
@@ -213,17 +213,21 @@ ls -la ffmpeg_build/.build_markers/
 
 A: 没有。依赖关系已经妥善处理。如果担心，可以使用顺序模式：
 ```bash
-./build_mac_v2.sh --sequential
+./build_mac.sh --sequential
 ```
 
 ### Q: 如何回到 v1.0？
 
-A: 直接使用旧脚本：
+A: 使用备份的 v1 脚本：
 ```bash
-./build_mac.sh
+./build_mac_v1_backup.sh
 ```
 
-两个版本可以共存。
+或者恢复：
+```bash
+mv build_mac.sh build_mac_v2.sh
+mv build_mac_v1_backup.sh build_mac.sh
+```
 
 ### Q: 环境变量设置有什么不同？
 
@@ -245,7 +249,7 @@ source ./env_setup.sh -p    # 永久
 A: 运行验证：
 ```bash
 # 检查构建
-./build_mac_v2.sh --help
+./build_mac.sh --help
 
 # 检查环境
 ./env_setup.sh --show
@@ -279,7 +283,7 @@ git pull
 
 # 2. 增量构建（只重新编译 x264 和 FFmpeg）
 cd ../..
-./build_mac_v2.sh
+./build_mac.sh
 
 # 3. 测试
 source ./env_setup.sh -t
@@ -294,20 +298,20 @@ vim config/versions.conf
 # 修改 X264_VERSION="v1.2.3"
 
 # 2. 强制重新构建 x264
-./build_mac_v2.sh --lib x264 --force
+./build_mac.sh --lib x264 --force
 
 # 3. 重新构建 FFmpeg
-./build_mac_v2.sh --lib ffmpeg --force
+./build_mac.sh --lib ffmpeg --force
 ```
 
 ### 全新开始
 
 ```bash
 # 清理一切
-./build_mac_v2.sh --clean all
+./build_mac.sh --clean all
 
 # 重新构建
-./build_mac_v2.sh -j 8
+./build_mac.sh -j 8
 
 # 设置环境
 source ./env_setup.sh -p
@@ -319,7 +323,7 @@ source ./env_setup.sh -p
 
 1. 查看帮助：
    ```bash
-   ./build_mac_v2.sh --help
+   ./build_mac.sh --help
    ./env_setup.sh --help
    ```
 

@@ -49,7 +49,7 @@
   - `build_ffmpeg.sh`
 
 #### 主脚本
-- `build_mac_v2.sh` - 新版主构建脚本 (300+ 行)
+- `build_mac.sh` - 新版主构建脚本 (300+ 行)
   - 参数解析
   - 增量构建逻辑
   - 并行构建支持
@@ -92,16 +92,16 @@ ffmpeg-build-mac/
 │       ├── build_svtav1.sh     # 新增
 │       ├── build_dav1d.sh      # 新增
 │       └── build_ffmpeg.sh     # 新增
-├── build_mac_v2.sh             # 新增：新版主脚本
+├── build_mac.sh                # 新版主脚本（v2.0）
+├── build_mac_v1_backup.sh      # 保留：v1备份脚本
 ├── env_setup.sh                # 新增：环境设置脚本
-├── README_V2.md                # 新增：v2 文档
+├── README.md                   # 更新：v2文档（原v1改名为README_V1.md）
+├── README_V1.md                # 保留：v1文档
 ├── MIGRATION_GUIDE.md          # 新增：迁移指南
 ├── QUICK_REFERENCE.md          # 新增：快速参考
 ├── REFACTORING_SUMMARY.md      # 新增：重构总结
 ├── .gitignore                  # 更新：添加备份文件
-├── build_mac.sh                # 保留：原版脚本
 ├── validate.sh                 # 保留
-├── README.md                   # 保留
 └── BUILD_MAC.md                # 保留
 ```
 
@@ -117,7 +117,7 @@ ffmpeg-build-mac/
 
 **代码位置:**
 - `scripts/common.sh`: `needs_rebuild()`, `mark_built()`
-- `build_mac_v2.sh`: 自动调用增量构建逻辑
+- `build_mac.sh`: 自动调用增量构建逻辑
 
 **效果:**
 - 无变更时：~10秒（vs 60分钟）
@@ -186,7 +186,7 @@ ffmpeg-build-mac/
 **代码位置:**
 - `scripts/parallel_builder.sh`: 并行调度器
 - `scripts/common.sh`: 依赖管理
-- `build_mac_v2.sh`: 并行/顺序切换
+- `build_mac.sh`: 并行/顺序切换
 
 **效果:**
 - 构建时间减少 60-75%
@@ -333,7 +333,7 @@ export DYLD_LIBRARY_PATH="$(pwd)/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
 
 ```bash
 # 1. 首次构建
-./build_mac_v2.sh -j 8
+./build_mac.sh -j 8
 # 等待 16 分钟（首次）
 
 # 2. 永久设置环境（只需一次）
@@ -343,7 +343,7 @@ source ./env_setup.sh -p
 # ... 编辑代码 ...
 
 # 4. 增量构建
-./build_mac_v2.sh
+./build_mac.sh
 # 等待 8 秒（无变更）或 5-15 分钟（有变更）
 ```
 
@@ -397,18 +397,18 @@ source ./env_setup.sh -p
 
 ```bash
 # 1. 全新构建
-./build_mac_v2.sh --clean all
-./build_mac_v2.sh -j 8
+./build_mac.sh --clean all
+./build_mac.sh -j 8
 
 # 2. 增量构建
 touch ffmpeg_sources/x264/x264.c
-./build_mac_v2.sh
+./build_mac.sh
 
 # 3. 强制重建
-./build_mac_v2.sh --force
+./build_mac.sh --force
 
 # 4. 单库构建
-./build_mac_v2.sh -l opus
+./build_mac.sh -l opus
 
 # 5. 环境设置
 source ./env_setup.sh -t
@@ -416,22 +416,22 @@ ffmpeg -version
 
 # 6. 版本切换
 # 编辑 config/versions.conf
-./build_mac_v2.sh --force
+./build_mac.sh --force
 ```
 
 ### 性能测试
 
 ```bash
 # 测量构建时间
-time ./build_mac_v2.sh
+time ./build_mac.sh
 
 # 测量增量构建时间
-time ./build_mac_v2.sh
+time ./build_mac.sh
 
 # 测量并行效果
-time ./build_mac_v2.sh -j 1
-time ./build_mac_v2.sh -j 4
-time ./build_mac_v2.sh -j 8
+time ./build_mac.sh -j 1
+time ./build_mac.sh -j 4
+time ./build_mac.sh -j 8
 ```
 
 ## 总结

@@ -6,32 +6,32 @@
 
 ```bash
 # 基本构建（增量+并行）
-./build_mac_v2.sh
+./build_mac.sh
 
 # 快速构建（8核）
-./build_mac_v2.sh -j 8
+./build_mac.sh -j 8
 
 # 强制完整重新构建
-./build_mac_v2.sh --force
+./build_mac.sh --force
 
 # 只构建特定库
-./build_mac_v2.sh -l x264 -l ffmpeg
+./build_mac.sh -l x264 -l ffmpeg
 
 # 顺序构建（调试时有用）
-./build_mac_v2.sh --sequential
+./build_mac.sh --sequential
 ```
 
 ### 清理命令
 
 ```bash
 # 清理所有（源码+构建）
-./build_mac_v2.sh --clean all
+./build_mac.sh --clean all
 
 # 只清理构建产物
-./build_mac_v2.sh --clean build
+./build_mac.sh --clean build
 
 # 只清理源码
-./build_mac_v2.sh --clean sources
+./build_mac.sh --clean sources
 ```
 
 ### 环境设置
@@ -71,7 +71,7 @@ ffmpeg -f lavfi -i testsrc=duration=10:size=1280x720 -c:v libx264 test.mp4
 ```
 配置文件:   config/versions.conf
 环境脚本:   env_setup.sh
-主脚本:     build_mac_v2.sh
+主脚本:     build_mac.sh
 
 库脚本:     scripts/libs/build_*.sh
 通用函数:   scripts/common.sh
@@ -111,13 +111,13 @@ OPUS_VERSION="v1.4"
 
 | 选项 | 简写 | 说明 | 示例 |
 |-----|------|------|------|
-| --help | -h | 显示帮助 | `./build_mac_v2.sh -h` |
-| --jobs N | -j N | 并行任务数 | `./build_mac_v2.sh -j 8` |
-| --sequential | -s | 顺序构建 | `./build_mac_v2.sh -s` |
-| --force | -f | 强制重建 | `./build_mac_v2.sh -f` |
-| --lib LIB | -l LIB | 构建特定库 | `./build_mac_v2.sh -l x264` |
-| --clean MODE | -c MODE | 清理 | `./build_mac_v2.sh -c all` |
-| --version MODE | | 版本模式 | `./build_mac_v2.sh --version stable` |
+| --help | -h | 显示帮助 | `./build_mac.sh -h` |
+| --jobs N | -j N | 并行任务数 | `./build_mac.sh -j 8` |
+| --sequential | -s | 顺序构建 | `./build_mac.sh -s` |
+| --force | -f | 强制重建 | `./build_mac.sh -f` |
+| --lib LIB | -l LIB | 构建特定库 | `./build_mac.sh -l x264` |
+| --clean MODE | -c MODE | 清理 | `./build_mac.sh -c all` |
+| --version MODE | | 版本模式 | `./build_mac.sh --version stable` |
 
 ## 库列表
 
@@ -153,7 +153,7 @@ cd ffmpeg_sources/x264
 
 # 2. 增量构建（自动检测变更）
 cd ../..
-./build_mac_v2.sh
+./build_mac.sh
 
 # 3. 测试
 source ./env_setup.sh -t
@@ -169,7 +169,7 @@ vim config/versions.conf
 # 设置各库的稳定版本
 
 # 2. 强制重新构建
-./build_mac_v2.sh --force
+./build_mac.sh --force
 
 # 3. 验证
 ffmpeg -version
@@ -184,7 +184,7 @@ git pull
 
 # 2. 只重新构建这个库
 cd ../..
-./build_mac_v2.sh -l opus -l ffmpeg --force
+./build_mac.sh -l opus -l ffmpeg --force
 ```
 
 ### 场景4：全新安装
@@ -195,7 +195,7 @@ git clone <repo-url>
 cd ffmpeg-build-mac
 
 # 2. 构建
-./build_mac_v2.sh -j 8
+./build_mac.sh -j 8
 
 # 3. 永久设置环境
 source ./env_setup.sh -p
@@ -211,13 +211,13 @@ ffmpeg -version
 
 ```bash
 # 1. 清理并重新构建
-./build_mac_v2.sh --clean build --force
+./build_mac.sh --clean build --force
 
 # 2. 如果还有问题，完全清理
-./build_mac_v2.sh --clean all
+./build_mac.sh --clean all
 
 # 3. 顺序构建（更容易看到错误）
-./build_mac_v2.sh -j 1
+./build_mac.sh -j 1
 
 # 4. 查看构建状态
 ls -la ffmpeg_build/.build_markers/
@@ -237,7 +237,7 @@ sysctl -n hw.ncpu
 # 16核 -> -j 12 或 -j 16
 
 # 留一些核心给系统
-./build_mac_v2.sh -j $(($(sysctl -n hw.ncpu) - 2))
+./build_mac.sh -j $(($(sysctl -n hw.ncpu) - 2))
 ```
 
 ### 磁盘空间
@@ -256,11 +256,11 @@ du -sh ffmpeg_sources ffmpeg_build
 | 问题 | 解决方案 |
 |-----|---------|
 | git clone 失败 | 检查网络，使用代理或镜像源 |
-| 编译错误 | `./build_mac_v2.sh -j 1 -f` 重新构建 |
+| 编译错误 | `./build_mac.sh -j 1 -f` 重新构建 |
 | 找不到动态库 | `source ./env_setup.sh -t` |
 | ffmpeg 命令不存在 | 检查 PATH: `./env_setup.sh --show` |
 | 增量构建未生效 | `ls ffmpeg_build/.build_markers/` 检查标记 |
-| 空间不足 | `./build_mac_v2.sh --clean sources` |
+| 空间不足 | `./build_mac.sh --clean sources` |
 | Homebrew 依赖缺失 | `brew install <package>` |
 
 ## 环境变量速查
@@ -280,10 +280,10 @@ export PKG_CONFIG_PATH="/path/to/ffmpeg_build/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 ```bash
 # FFmpeg 构建别名
-alias ffbuild='./build_mac_v2.sh'
-alias ffbuild-fast='./build_mac_v2.sh -j 8'
-alias ffbuild-force='./build_mac_v2.sh --force'
-alias ffbuild-clean='./build_mac_v2.sh --clean build'
+alias ffbuild='./build_mac.sh'
+alias ffbuild-fast='./build_mac.sh -j 8'
+alias ffbuild-force='./build_mac.sh --force'
+alias ffbuild-clean='./build_mac.sh --clean build'
 alias ffenv='source ./env_setup.sh -t'
 alias ffstatus='./env_setup.sh --show'
 
@@ -304,7 +304,7 @@ alias cdff='cd ~/path/to/ffmpeg-build-mac'
 
 ```bash
 # 构建脚本帮助
-./build_mac_v2.sh --help
+./build_mac.sh --help
 
 # 环境脚本帮助
 ./env_setup.sh --help

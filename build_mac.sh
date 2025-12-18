@@ -1,296 +1,269 @@
 #!/bin/bash
 
-# FFmpeg Mac 构建脚本
-# 参考: https://trac.ffmpeg.org/wiki/CompilationGuide/Centos
-# 适配 macOS 版本
-#
-# 注意: 本脚本使用所有第三方库的最新开发版本（master/main 分支）
-# 这确保你能获得最新的功能和修复，但可能包含未完全测试的代码
+# FFmpeg Mac 构建脚本 v2.0
+# 新特性:
+#   - 增量构建支持（只重新编译修改过的库）
+#   - 版本管理（可选择稳定版或最新版）
+#   - 模块化架构（每个库独立构建脚本）
+#   - 并行构建支持（加速编译过程）
+#   - 灵活的配置选项
 
-set -e  # 遇到错误立即退出
+set -e
 
-# 颜色输出
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# 获取脚本所在目录（FFmpeg源码目录）
+# ============= 初始化 =============
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# 构建目录配置
+# Load common functions
+source "$SCRIPT_DIR/scripts/common.sh"
+source "$SCRIPT_DIR/scripts/parallel_builder.sh"
+
+# ============= 配置 =============
 FFMPEG_SOURCES="$SCRIPT_DIR/ffmpeg_sources"
 FFMPEG_BUILD="$SCRIPT_DIR/ffmpeg_build"
 BIN_DIR="$FFMPEG_BUILD/bin"
 
-echo -e "${GREEN}=== FFmpeg Mac 构建脚本 ===${NC}"
-echo "源码目录: $SCRIPT_DIR"
-echo "构建目录: $FFMPEG_BUILD"
-echo "二进制目录: $BIN_DIR"
-echo ""
+# Default options
+PARALLEL_BUILD=true
+MAX_PARALLEL_JOBS=4
+FORCE_REBUILD=0
+CLEAN_MODE=""
+SPECIFIC_LIBS=()
 
-# 检查 Homebrew
-if ! command -v brew &> /dev/null; then
-    echo -e "${RED}错误: 未找到 Homebrew，请先安装 Homebrew${NC}"
-    echo "安装命令: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-    exit 1
-fi
+# ============= 帮助信息 =============
+show_help() {
+    cat << EOF
+FFmpeg Mac 构建脚本 v2.0
 
-# 安装依赖
-echo -e "${YELLOW}[1/15] 安装依赖包...${NC}"
-brew install \
-    autoconf \
-    automake \
-    cmake \
-    freetype \
-    git \
-    git-svn \
-    libtool \
-    make \
-    meson \
-    nasm \
-    ninja \
-    pkg-config \
-    python3 \
-    yasm \
-    zlib \
-    bzip2 \
-    || echo -e "${YELLOW}某些包可能已安装，继续...${NC}"
+用法: $0 [选项]
 
-# 创建目录
-echo -e "${YELLOW}[2/15] 创建构建目录...${NC}"
-mkdir -p "$FFMPEG_SOURCES"
-mkdir -p "$FFMPEG_BUILD"/{bin,lib,include,share}
+选项:
+    -h, --help              显示帮助信息
+    -j, --jobs N            并行任务数 (默认: 4)
+    -s, --sequential        顺序构建（禁用并行）
+    -f, --force             强制重新编译所有库
+    -l, --lib LIB           只构建指定的库（可多次使用）
+    -c, --clean [mode]      清理模式: all, build, sources
+    --version MODE          版本模式: stable, latest (默认: 从 config/versions.conf 读取)
 
-# 检查 nasm 和 yasm（使用系统安装的版本）
-echo -e "${YELLOW}[3/15] 检查汇编器工具...${NC}"
-if ! command -v nasm &> /dev/null; then
-    echo -e "${RED}错误: 未找到 nasm，请确保已通过 brew 安装${NC}"
-    exit 1
-fi
-if ! command -v yasm &> /dev/null; then
-    echo -e "${RED}错误: 未找到 yasm，请确保已通过 brew 安装${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ NASM 版本: $(nasm -v | head -n1)${NC}"
-echo -e "${GREEN}✓ Yasm 版本: $(yasm --version | head -n1)${NC}"
+示例:
+    $0                      # 默认构建（增量编译，并行4个任务）
+    $0 -j 8                 # 使用8个并行任务
+    $0 -f                   # 强制重新编译所有库
+    $0 -l x264 -l x265      # 只编译 x264 和 x265
+    $0 -s                   # 顺序构建
+    $0 -c build             # 清理构建产物但保留源码
+    $0 --version stable     # 使用稳定版本
 
-# libx264 (使用最新开发版本)
-echo -e "${YELLOW}[4/15] 编译 libx264 (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "x264" ]; then
-    git clone https://code.videolan.org/videolan/x264.git
-fi
-cd x264
-git pull || true
-PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
-    --prefix="$FFMPEG_BUILD" \
-    --bindir="$BIN_DIR" \
-    --enable-shared \
-    --enable-pic
-make -j$(sysctl -n hw.ncpu)
-make install
+支持的库:
+    x264, x265, fdk-aac, lame, opus, libvpx, libaom,
+    openh264, kvazaar, svtav1, dav1d, ffmpeg
 
-# libx265 (使用最新开发版本)
-echo -e "${YELLOW}[5/15] 编译 libx265 (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "x265_git" ]; then
-    git clone https://bitbucket.org/multicoreware/x265_git
-fi
-cd x265_git
-git pull || true
-mkdir -p build/macos
-cd build/macos
-cmake -G "Unix Makefiles" \
-    -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED:bool=on \
-    ../../source
-make -j$(sysctl -n hw.ncpu)
-make install
+EOF
+}
 
-# libfdk_aac (使用最新开发版本)
-echo -e "${YELLOW}[6/15] 编译 libfdk_aac (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "fdk-aac" ]; then
-    git clone https://github.com/mstorsjo/fdk-aac
-fi
-cd fdk-aac
-git pull || true
-autoreconf -fiv
-./configure --prefix="$FFMPEG_BUILD" --enable-shared
-make -j$(sysctl -n hw.ncpu)
-make install
+# ============= 参数解析 =============
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -j|--jobs)
+                MAX_PARALLEL_JOBS="$2"
+                shift 2
+                ;;
+            -s|--sequential)
+                PARALLEL_BUILD=false
+                shift
+                ;;
+            -f|--force)
+                FORCE_REBUILD=1
+                shift
+                ;;
+            -l|--lib)
+                SPECIFIC_LIBS+=("$2")
+                shift 2
+                ;;
+            -c|--clean)
+                CLEAN_MODE="${2:-all}"
+                shift
+                if [[ "$1" != -* ]] && [[ -n "$1" ]]; then
+                    shift
+                fi
+                ;;
+            --version)
+                BUILD_MODE="$2"
+                shift 2
+                ;;
+            *)
+                log_error "未知选项: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+}
 
-# libmp3lame (使用最新开发版本，从 SVN 通过 git-svn)
-echo -e "${YELLOW}[7/15] 编译 libmp3lame (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "lame" ]; then
-    echo "使用 git-svn 从 SVN 仓库克隆 lame..."
-    git svn clone https://svn.code.sf.net/p/lame/svn/trunk/lame lame
-fi
-cd lame
-git svn rebase || true
-autoreconf -fiv || ./autogen.sh || true
-./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR" --enable-shared --enable-nasm
-make -j$(sysctl -n hw.ncpu)
-make install
+# ============= 清理功能 =============
+clean_build() {
+    local mode="${1:-all}"
 
-# libopus (使用最新开发版本)
-echo -e "${YELLOW}[8/15] 编译 libopus (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "opus" ]; then
-    git clone https://github.com/xiph/opus.git
-fi
-cd opus
-git pull || true
-./autogen.sh
-./configure --prefix="$FFMPEG_BUILD" --enable-shared
-make -j$(sysctl -n hw.ncpu)
-make install
+    case "$mode" in
+        all)
+            log_warning "清理所有构建产物和源码..."
+            rm -rf "$FFMPEG_BUILD" "$FFMPEG_SOURCES"
+            log_success "清理完成"
+            ;;
+        build)
+            log_warning "清理构建产物..."
+            rm -rf "$FFMPEG_BUILD"
+            log_success "清理完成"
+            ;;
+        sources)
+            log_warning "清理源码..."
+            rm -rf "$FFMPEG_SOURCES"
+            log_success "清理完成"
+            ;;
+        *)
+            log_error "未知的清理模式: $mode"
+            log_info "支持的模式: all, build, sources"
+            exit 1
+            ;;
+    esac
+}
 
-# libvpx (使用最新开发版本)
-echo -e "${YELLOW}[9/15] 编译 libvpx (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "libvpx" ]; then
-    git clone https://chromium.googlesource.com/webm/libvpx.git
-fi
-cd libvpx
-git pull || true
-./configure --prefix="$FFMPEG_BUILD" \
-    --disable-examples \
-    --disable-unit-tests \
-    --enable-vp9-highbitdepth \
-    --enable-shared \
-    --as=yasm
-make -j$(sysctl -n hw.ncpu)
-make install
+# ============= 依赖检查 =============
+check_dependencies() {
+    log_step "检查系统依赖..."
 
-# libaom (使用最新开发版本)
-echo -e "${YELLOW}[10/15] 编译 libaom (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "aom" ]; then
-    git clone https://aomedia.googlesource.com/aom
-fi
-cd aom
-git pull || true
-rm -rf build
-mkdir -p build
-cd build
-cmake -G "Unix Makefiles" \
-    -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED=1 \
-    -DENABLE_NASM=on \
-    ..
-make -j$(sysctl -n hw.ncpu)
-make install
+    # Check Homebrew
+    if ! command_exists brew; then
+        log_error "未找到 Homebrew，请先安装 Homebrew"
+        echo "安装命令: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        exit 1
+    fi
+    log_success "Homebrew 已安装"
 
-# openh264 (使用最新开发版本)
-echo -e "${YELLOW}[11/15] 编译 openh264 (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "openh264" ]; then
-    git clone https://github.com/cisco/openh264.git
-fi
-cd openh264
-git pull || true
-make -j$(sysctl -n hw.ncpu) PREFIX="$FFMPEG_BUILD"
-make install PREFIX="$FFMPEG_BUILD"
+    # Required packages
+    local required_tools=(
+        "autoconf" "automake" "cmake" "git" "git-svn"
+        "libtool" "make" "meson" "nasm" "ninja"
+        "pkg-config" "python3" "yasm"
+    )
 
-# Kvazaar (使用最新开发版本)
-echo -e "${YELLOW}[12/15] 编译 Kvazaar (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "kvazaar" ]; then
-    git clone https://github.com/ultravideo/kvazaar.git
-fi
-cd kvazaar
-git pull || true
-./autogen.sh
-./configure --prefix="$FFMPEG_BUILD" --enable-shared
-make -j$(sysctl -n hw.ncpu)
-make install
+    log_info "检查必需工具..."
+    local missing=()
+    for tool in "${required_tools[@]}"; do
+        if ! command_exists "$tool" && ! brew list "$tool" &>/dev/null; then
+            missing+=("$tool")
+        fi
+    done
 
-# SVT-AV1 (使用最新开发版本)
-echo -e "${YELLOW}[13/15] 编译 SVT-AV1 (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "SVT-AV1" ]; then
-    git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git
-fi
-cd SVT-AV1
-git pull || true
-rm -rf build
-mkdir -p build
-cd build
-cmake -G "Unix Makefiles" \
-    -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED=1 \
-    -DCMAKE_BUILD_TYPE=Release \
-    ..
-make -j$(sysctl -n hw.ncpu)
-make install
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_warning "以下工具未安装: ${missing[*]}"
+        log_info "正在安装缺失的依赖..."
+        brew install "${missing[@]}" || {
+            log_error "依赖安装失败"
+            exit 1
+        }
+    fi
 
-# dav1d (使用最新开发版本)
-echo -e "${YELLOW}[14/15] 编译 dav1d (最新开发版本)...${NC}"
-cd "$FFMPEG_SOURCES"
-if [ ! -d "dav1d" ]; then
-    git clone https://code.videolan.org/videolan/dav1d.git
-fi
-cd dav1d
-git pull || true
-rm -rf build
-meson setup build \
-    --prefix="$FFMPEG_BUILD" \
-    --buildtype=release \
-    --default-library=shared
-ninja -C build
-ninja -C build install
+    log_success "所有依赖已满足"
+}
 
-# FFmpeg
-echo -e "${GREEN}[15/15] 编译 FFmpeg...${NC}"
-cd "$SCRIPT_DIR"
-# 所有文件安装到 ffmpeg_build 目录（动态链接）：
-# - 可执行文件: ffmpeg_build/bin (通过 --bindir)
-# - 库文件: ffmpeg_build/lib (通过 --prefix，动态库 .dylib)
-# - 头文件: ffmpeg_build/include (通过 --prefix)
-PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
-    --prefix="$FFMPEG_BUILD" \
-    --extra-cflags="-I$FFMPEG_BUILD/include" \
-    --extra-ldflags="-L$FFMPEG_BUILD/lib" \
-    --extra-libs="-lpthread -lm" \
-    --bindir="$BIN_DIR" \
-    --enable-shared \
-    --enable-gpl \
-    --enable-libfdk_aac \
-    --enable-libfreetype \
-    --enable-libmp3lame \
-    --enable-libopus \
-    --enable-libvpx \
-    --enable-libx264 \
-    --enable-libx265 \
-    --enable-libaom \
-    --enable-libopenh264 \
-    --enable-libkvazaar \
-    --enable-libsvtav1 \
-    --enable-libdav1d \
-    --enable-nonfree \
-    --enable-version3
+# ============= 主构建流程 =============
+main() {
+    # Parse command line arguments
+    parse_arguments "$@"
 
-make -j$(sysctl -n hw.ncpu)
-make install
+    # Export configuration
+    export MAX_PARALLEL_JOBS
+    export FORCE_REBUILD
 
-hash -r
+    # Show banner
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  FFmpeg Mac 构建脚本 v2.0${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    log_info "项目目录: $SCRIPT_DIR"
+    log_info "构建目录: $FFMPEG_BUILD"
+    log_info "源码目录: $FFMPEG_SOURCES"
+    echo ""
 
-echo ""
-echo -e "${GREEN}=== 构建完成！ ===${NC}"
-echo "所有文件已安装（动态链接）:"
-echo "  - 可执行文件: $BIN_DIR"
-echo "  - 动态库文件: $FFMPEG_BUILD/lib"
-echo "  - 头文件: $FFMPEG_BUILD/include"
-echo ""
-echo "使用以下命令添加到环境变量:"
-echo "  export PATH=\"$BIN_DIR:\$PATH\""
-echo "  export DYLD_LIBRARY_PATH=\"$FFMPEG_BUILD/lib:\$DYLD_LIBRARY_PATH\""
-echo ""
-echo "验证安装:"
-echo "  $BIN_DIR/ffmpeg -version"
-echo "  $BIN_DIR/ffprobe -version"
+    # Handle clean mode
+    if [ -n "$CLEAN_MODE" ]; then
+        clean_build "$CLEAN_MODE"
+        exit 0
+    fi
 
+    # Check dependencies
+    check_dependencies
+
+    # Create build directories
+    setup_build_dirs "$FFMPEG_BUILD" "$FFMPEG_SOURCES"
+
+    # Load version configuration
+    load_versions "$SCRIPT_DIR"
+
+    # Start build
+    local start_time=$(date +%s)
+
+    log_step "开始构建..."
+    if [ "$FORCE_REBUILD" = "1" ]; then
+        log_warning "强制重新编译所有库"
+    fi
+
+    if [ ${#SPECIFIC_LIBS[@]} -gt 0 ]; then
+        # Build specific libraries
+        log_info "构建指定的库: ${SPECIFIC_LIBS[*]}"
+        build_specific_libraries "$FFMPEG_SOURCES" "$FFMPEG_BUILD" "${SPECIFIC_LIBS[@]}" || {
+            log_error "构建失败"
+            exit 1
+        }
+    else
+        # Build all libraries
+        if [ "$PARALLEL_BUILD" = "true" ]; then
+            log_info "并行构建模式（最大并行任务: $MAX_PARALLEL_JOBS）"
+        else
+            log_info "顺序构建模式"
+        fi
+
+        parallel_build_all "$FFMPEG_SOURCES" "$FFMPEG_BUILD" "$PARALLEL_BUILD" || {
+            log_error "构建失败"
+            exit 1
+        }
+    fi
+
+    # Calculate build time
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    local minutes=$((duration / 60))
+    local seconds=$((duration % 60))
+
+    # Success message
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  构建成功完成！${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    log_success "构建时间: ${minutes}分${seconds}秒"
+    echo ""
+    log_info "安装位置:"
+    echo "  可执行文件: $BIN_DIR"
+    echo "  动态库文件: $FFMPEG_BUILD/lib"
+    echo "  头文件: $FFMPEG_BUILD/include"
+    echo ""
+    log_info "环境设置:"
+    echo "  运行以下命令或使用 env_setup.sh 脚本:"
+    echo "    export PATH=\"$BIN_DIR:\$PATH\""
+    echo "    export DYLD_LIBRARY_PATH=\"$FFMPEG_BUILD/lib:\$DYLD_LIBRARY_PATH\""
+    echo ""
+    log_info "验证安装:"
+    echo "  $BIN_DIR/ffmpeg -version"
+    echo ""
+}
+
+# Run main function
+main "$@"

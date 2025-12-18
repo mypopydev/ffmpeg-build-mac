@@ -220,26 +220,24 @@ is_force_rebuild() {
 
 # ============= Dependency Management =============
 
-# Define library dependencies (key=library, value=space-separated dependencies)
-declare -gA LIB_DEPENDENCIES=(
-    ["x264"]=""
-    ["x265"]=""
-    ["fdk-aac"]=""
-    ["lame"]=""
-    ["opus"]=""
-    ["libvpx"]=""
-    ["libaom"]=""
-    ["openh264"]=""
-    ["kvazaar"]=""
-    ["svtav1"]=""
-    ["dav1d"]=""
-    ["ffmpeg"]="x264 x265 fdk-aac lame opus libvpx libaom openh264 kvazaar svtav1 dav1d"
-)
-
 # Get dependencies for a library
+# Returns space-separated list of dependencies
 get_dependencies() {
     local lib_name="$1"
-    echo "${LIB_DEPENDENCIES[$lib_name]:-}"
+
+    case "$lib_name" in
+        x264|x265|fdk-aac|lame|opus|libvpx|libaom|openh264|kvazaar|svtav1|dav1d)
+            # These libraries have no dependencies
+            echo ""
+            ;;
+        ffmpeg)
+            # FFmpeg depends on all codec libraries
+            echo "x264 x265 fdk-aac lame opus libvpx libaom openh264 kvazaar svtav1 dav1d"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
 }
 
 # Check if all dependencies are built

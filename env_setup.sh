@@ -20,7 +20,7 @@ NC='\033[0m'
 # Check if build directory exists
 if [ ! -d "$FFMPEG_BUILD" ]; then
     echo -e "${RED}错误: FFmpeg 构建目录不存在: $FFMPEG_BUILD${NC}"
-    echo "请先运行 build_mac_v2.sh 进行构建"
+    echo "请先运行 build_mac.sh 进行构建"
     exit 1
 fi
 

@@ -22,12 +22,10 @@ cd "$SCRIPT_DIR"
 # 构建目录配置
 FFMPEG_SOURCES="$SCRIPT_DIR/ffmpeg_sources"
 FFMPEG_BUILD="$SCRIPT_DIR/ffmpeg_build"
-BIN_DIR="$FFMPEG_BUILD/bin"
 
 echo -e "${GREEN}=== FFmpeg Mac 构建脚本 ===${NC}"
 echo "源码目录: $SCRIPT_DIR"
 echo "构建目录: $FFMPEG_BUILD"
-echo "二进制目录: $BIN_DIR"
 echo ""
 
 # 检查 Homebrew
@@ -45,7 +43,6 @@ brew install \
     cmake \
     freetype \
     git \
-    git-svn \
     libtool \
     make \
     meson \
@@ -53,6 +50,7 @@ brew install \
     ninja \
     pkg-config \
     python3 \
+    vulkan-headers \
     yasm \
     zlib \
     bzip2 \
@@ -73,8 +71,11 @@ if ! command -v yasm &> /dev/null; then
     echo -e "${RED}错误: 未找到 yasm，请确保已通过 brew 安装${NC}"
     exit 1
 fi
+
 echo -e "${GREEN}✓ NASM 版本: $(nasm -v | head -n1)${NC}"
+echo -e "${GREEN}✓ NASM 路径: $(command -v nasm)${NC}"
 echo -e "${GREEN}✓ Yasm 版本: $(yasm --version | head -n1)${NC}"
+echo -e "${GREEN}✓ Yasm 路径: $(command -v yasm)${NC}"
 
 # libx264 (使用最新开发版本)
 echo -e "${YELLOW}[4/15] 编译 libx264 (最新开发版本)...${NC}"
@@ -86,7 +87,6 @@ cd x264
 git pull || true
 PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --prefix="$FFMPEG_BUILD" \
-    --bindir="$BIN_DIR" \
     --enable-shared \
     --enable-pic
 make -j$(sysctl -n hw.ncpu)
@@ -122,17 +122,26 @@ autoreconf -fiv
 make -j$(sysctl -n hw.ncpu)
 make install
 
-# libmp3lame (使用最新开发版本，从 SVN 通过 git-svn)
-echo -e "${YELLOW}[7/15] 编译 libmp3lame (最新开发版本)...${NC}"
+# libmp3lame (使用 GitHub 仓库版本)
+echo -e "${YELLOW}[7/15] 编译 libmp3lame (GitHub 版本)...${NC}"
 cd "$FFMPEG_SOURCES"
 if [ ! -d "lame" ]; then
-    echo "使用 git-svn 从 SVN 仓库克隆 lame..."
-    git svn clone https://svn.code.sf.net/p/lame/svn/trunk/lame lame
+    echo -e "${YELLOW}从 GitHub 仓库克隆 lame...${NC}"
+    if ! git clone git@github.com:mypopydev/lame.git lame; then
+        echo -e "${RED}错误: git clone 失败${NC}"
+        exit 1
+    fi
 fi
 cd lame
-git svn rebase || true
-autoreconf -fiv || ./autogen.sh || true
-./configure --prefix="$FFMPEG_BUILD" --bindir="$BIN_DIR" --enable-shared --enable-nasm
+git pull || true
+
+# 生成 configure 脚本（如果需要）
+if [ ! -f "configure" ]; then
+    echo -e "${YELLOW}生成 configure 脚本...${NC}"
+    ./autogen.sh || autoreconf -fiv || true
+fi
+
+./configure --prefix="$FFMPEG_BUILD" --enable-shared --enable-nasm
 make -j$(sysctl -n hw.ncpu)
 make install
 
@@ -174,13 +183,19 @@ if [ ! -d "aom" ]; then
 fi
 cd aom
 git pull || true
-rm -rf build
+# 恢复 build/cmake 目录（如果被删除）
+if [ ! -d "build/cmake" ]; then
+    git restore build/ 2>/dev/null || true
+fi
+# 只清理构建产物，保留 build/cmake 目录
+rm -rf build/CMakeCache.txt build/CMakeFiles build/*.dylib build/*.a 2>/dev/null || true
 mkdir -p build
 cd build
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
     -DENABLE_SHARED=1 \
     -DENABLE_NASM=on \
+    -DCMAKE_BUILD_TYPE=Release \
     ..
 make -j$(sysctl -n hw.ncpu)
 make install
@@ -244,19 +259,67 @@ meson setup build \
 ninja -C build
 ninja -C build install
 
+# libplacebo (使用最新开发版本)
+echo -e "${YELLOW}[15/15] 编译 libplacebo (最新开发版本)...${NC}"
+cd "$FFMPEG_SOURCES"
+if [ ! -d "libplacebo" ]; then
+    git clone https://code.videolan.org/videolan/libplacebo.git
+    cd libplacebo
+    git submodule update --init
+else
+    cd libplacebo
+    git pull || true
+    git submodule update --init || true
+fi
+rm -rf build
+meson setup build \
+    --prefix="$FFMPEG_BUILD" \
+    --buildtype=release \
+    --default-library=shared
+ninja -C build
+ninja -C build install
+
 # FFmpeg
-echo -e "${GREEN}[15/15] 编译 FFmpeg...${NC}"
+echo -e "${GREEN}[16/16] 编译 FFmpeg...${NC}"
 cd "$SCRIPT_DIR"
+
+# 检查 FFmpeg 源码是否存在
+if [ ! -f "configure" ]; then
+    echo -e "${YELLOW}FFmpeg configure 脚本不存在，检查是否需要克隆 FFmpeg...${NC}"
+    if [ ! -d "ffmpeg" ] && [ ! -d ".git" ]; then
+        echo -e "${YELLOW}正在克隆 FFmpeg 源码...${NC}"
+        git clone https://git.ffmpeg.org/ffmpeg.git .
+    elif [ -d "ffmpeg" ]; then
+        echo -e "${YELLOW}使用 ffmpeg 子目录...${NC}"
+        cd ffmpeg
+    else
+        echo -e "${RED}错误: 未找到 FFmpeg 源码，请确保在 FFmpeg 源码目录中运行此脚本${NC}"
+        echo "或者手动克隆: git clone https://git.ffmpeg.org/ffmpeg.git"
+        exit 1
+    fi
+fi
+
 # 所有文件安装到 ffmpeg_build 目录（动态链接）：
-# - 可执行文件: ffmpeg_build/bin (通过 --bindir)
-# - 库文件: ffmpeg_build/lib (通过 --prefix，动态库 .dylib)
-# - 头文件: ffmpeg_build/include (通过 --prefix)
+# - 可执行文件: ffmpeg_build/bin (默认)
+# - 库文件: ffmpeg_build/lib (默认)
+# - 头文件: ffmpeg_build/include (默认)
+
+# 查找 Vulkan 头文件路径（libplacebo 需要）
+VULKAN_INCLUDE=""
+if [ -d "/opt/homebrew/include/vulkan" ]; then
+    VULKAN_INCLUDE="-I/opt/homebrew/include"
+elif [ -d "/opt/homebrew/Cellar/vulkan-headers" ]; then
+    VULKAN_HEADER_DIR=$(find /opt/homebrew/Cellar/vulkan-headers -type d -name "include" | head -1)
+    if [ -n "$VULKAN_HEADER_DIR" ]; then
+        VULKAN_INCLUDE="-I$(dirname "$VULKAN_HEADER_DIR")"
+    fi
+fi
+
 PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --prefix="$FFMPEG_BUILD" \
-    --extra-cflags="-I$FFMPEG_BUILD/include" \
+    --extra-cflags="-I$FFMPEG_BUILD/include $VULKAN_INCLUDE" \
     --extra-ldflags="-L$FFMPEG_BUILD/lib" \
     --extra-libs="-lpthread -lm" \
-    --bindir="$BIN_DIR" \
     --enable-shared \
     --enable-gpl \
     --enable-libfdk_aac \
@@ -271,6 +334,7 @@ PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
     --enable-libkvazaar \
     --enable-libsvtav1 \
     --enable-libdav1d \
+    --enable-libplacebo \
     --enable-nonfree \
     --enable-version3
 
@@ -282,15 +346,15 @@ hash -r
 echo ""
 echo -e "${GREEN}=== 构建完成！ ===${NC}"
 echo "所有文件已安装（动态链接）:"
-echo "  - 可执行文件: $BIN_DIR"
+echo "  - 可执行文件: $FFMPEG_BUILD/bin"
 echo "  - 动态库文件: $FFMPEG_BUILD/lib"
 echo "  - 头文件: $FFMPEG_BUILD/include"
 echo ""
 echo "使用以下命令添加到环境变量:"
-echo "  export PATH=\"$BIN_DIR:\$PATH\""
+echo "  export PATH=\"$FFMPEG_BUILD/bin:\$PATH\""
 echo "  export DYLD_LIBRARY_PATH=\"$FFMPEG_BUILD/lib:\$DYLD_LIBRARY_PATH\""
 echo ""
 echo "验证安装:"
-echo "  $BIN_DIR/ffmpeg -version"
-echo "  $BIN_DIR/ffprobe -version"
+echo "  $FFMPEG_BUILD/bin/ffmpeg -version"
+echo "  $FFMPEG_BUILD/bin/ffprobe -version"
 

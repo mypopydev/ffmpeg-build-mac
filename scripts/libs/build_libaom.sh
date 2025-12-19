@@ -34,7 +34,15 @@ build_libaom() {
 
     # Build
     cd "$source_dir"
-    rm -rf build
+
+    # Restore build/cmake directory if it was deleted (required for aom build)
+    if [ ! -d "build/cmake" ]; then
+        log_info "Restoring build/cmake directory..."
+        git restore build/ 2>/dev/null || true
+    fi
+
+    # Clean build artifacts but preserve build/cmake directory
+    rm -rf build/CMakeCache.txt build/CMakeFiles build/*.dylib build/*.a 2>/dev/null || true
     mkdir -p build
     cd build
 

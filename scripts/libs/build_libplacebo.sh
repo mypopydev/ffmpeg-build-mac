@@ -32,8 +32,14 @@ build_libplacebo() {
         return 1
     }
 
-    # Build
+    # Initialize git submodules (required for libplacebo)
     cd "$source_dir"
+    log_info "Initializing git submodules for $LIB_NAME..."
+    git submodule update --init || {
+        log_warning "Failed to update submodules, continuing anyway"
+    }
+
+    # Build
     rm -rf build
 
     log_info "Configuring $LIB_NAME with meson..."

@@ -8,7 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common.sh"
 
 LIB_NAME="lame"
-REPO_URL="https://svn.code.sf.net/p/lame/svn/trunk/lame"
+# Use GitHub mirror for better reliability
+REPO_URL="git@github.com:mypopydev/lame.git"
 
 build_lame() {
     local ffmpeg_sources="$1"
@@ -26,24 +27,27 @@ build_lame() {
         return 0
     fi
 
-    # Clone or update using git-svn
+    # Clone or update from GitHub
     if [ ! -d "$source_dir" ]; then
-        log_info "Cloning $LIB_NAME using git-svn (this may take a while)..."
-        git svn clone "$REPO_URL" "$source_dir" || {
+        log_info "Cloning $LIB_NAME from GitHub..."
+        git clone "$REPO_URL" "$source_dir" || {
             log_error "Failed to clone $LIB_NAME"
             return 1
         }
     else
         log_info "Updating $LIB_NAME..."
         cd "$source_dir"
-        git svn rebase || log_warning "Failed to update, using existing version"
+        git pull || log_warning "Failed to update, using existing version"
     fi
 
     # Build
     cd "$source_dir"
 
+    # Generate configure script if needed
     log_info "Running autoreconf for $LIB_NAME..."
-    autoreconf -fiv || ./autogen.sh || true
+    if [ ! -f "configure" ]; then
+        ./autogen.sh || autoreconf -fiv || true
+    fi
 
     log_info "Configuring $LIB_NAME..."
     ./configure --prefix="$ffmpeg_build" \

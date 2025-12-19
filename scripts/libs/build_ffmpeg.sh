@@ -34,10 +34,21 @@ build_ffmpeg() {
     # Build
     cd "$source_dir"
 
+    # Find Vulkan headers path (required for libplacebo)
+    local vulkan_include=""
+    if [ -d "/opt/homebrew/include/vulkan" ]; then
+        vulkan_include="-I/opt/homebrew/include"
+    elif [ -d "/opt/homebrew/Cellar/vulkan-headers" ]; then
+        local vulkan_header_dir=$(find /opt/homebrew/Cellar/vulkan-headers -type d -name "include" | head -1)
+        if [ -n "$vulkan_header_dir" ]; then
+            vulkan_include="-I$(dirname "$vulkan_header_dir")"
+        fi
+    fi
+
     log_info "Configuring FFmpeg..."
     PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" ./configure \
         --prefix="$ffmpeg_build" \
-        --extra-cflags="-I$ffmpeg_build/include" \
+        --extra-cflags="-I$ffmpeg_build/include $vulkan_include" \
         --extra-ldflags="-L$ffmpeg_build/lib" \
         --extra-libs="-lpthread -lm" \
         --bindir="$ffmpeg_build/bin" \

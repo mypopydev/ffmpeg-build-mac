@@ -19,6 +19,15 @@
 
 # 顺序构建（调试时有用）
 ./build_mac.sh --sequential
+
+# 保存构建日志
+./build_mac.sh --log-file build.log
+
+# 详细输出模式
+./build_mac.sh -v
+
+# 安静模式
+./build_mac.sh -q
 ```
 
 ### 清理命令
@@ -118,6 +127,9 @@ OPUS_VERSION="v1.4"
 | --lib LIB | -l LIB | 构建特定库 | `./build_mac.sh -l x264` |
 | --clean MODE | -c MODE | 清理 | `./build_mac.sh -c all` |
 | --version MODE | | 版本模式 | `./build_mac.sh --version stable` |
+| --log-file FILE | | 日志文件 | `./build_mac.sh --log-file build.log` |
+| --verbose | -v | 详细输出 | `./build_mac.sh -v` |
+| --quiet | -q | 安静模式 | `./build_mac.sh -q` |
 
 ## 库列表
 

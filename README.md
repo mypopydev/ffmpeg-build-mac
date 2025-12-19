@@ -114,6 +114,15 @@ ffmpeg-build-mac/
 
 # 清理所有（包括源码）
 ./build_mac.sh --clean all
+
+# 保存构建日志到文件
+./build_mac.sh --log-file build.log
+
+# 详细输出模式
+./build_mac.sh -v
+
+# 安静模式（只显示错误和警告）
+./build_mac.sh -q
 ```
 
 ### 版本管理

@@ -12,9 +12,18 @@ set -e
 
 # ============= 初始化 =============
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Get version from VERSION file if it exists
+VERSION_FILE="$SCRIPT_DIR/VERSION"
+if [ -f "$VERSION_FILE" ]; then
+    SCRIPT_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+else
+    SCRIPT_VERSION="2.0.0"
+fi
+
 cd "$SCRIPT_DIR"
 
-# Load common functions
+# Load common functions (will be overridden by log functions below if logging is enabled)
 source "$SCRIPT_DIR/scripts/common.sh"
 source "$SCRIPT_DIR/scripts/parallel_builder.sh"
 
@@ -31,6 +40,10 @@ CLEAN_MODE=""
 SPECIFIC_LIBS=()
 DEBUG_ENABLED=0
 DEBUG_FLAGS="-g -O0"
+LOG_FILE=""
+LOG_LEVEL="normal"  # quiet, normal, verbose
+VERBOSE=0
+QUIET=0
 
 # ============= 帮助信息 =============
 show_help() {
@@ -49,6 +62,9 @@ FFmpeg Mac 构建脚本 v2.0
     -d, --debug             启用debug编译（包含调试符号）
     --debug-flags FLAGS     自定义debug编译标志（默认: "-g -O0"）
     --version MODE          版本模式: stable, latest (默认: 从 config/versions.conf 读取)
+    --log-file FILE         指定日志文件路径（默认: build_YYYYMMDD_HHMMSS.log）
+    -v, --verbose           详细输出模式
+    -q, --quiet             安静模式（只显示错误和警告）
 
 示例:
     $0                      # 默认构建（增量编译，并行4个任务）
@@ -61,6 +77,9 @@ FFmpeg Mac 构建脚本 v2.0
     $0 -d                   # debug模式构建（包含调试符号）
     $0 -d -l ffmpeg         # 只构建FFmpeg的debug版本
     $0 --debug-flags="-g -O1" # 自定义debug编译标志
+    $0 --log-file build.log # 保存日志到指定文件
+    $0 -v                   # 详细输出模式
+    $0 -q                   # 安静模式
 
 支持的库:
     x264, x265, fdk-aac, lame, opus, libvpx, libaom,
@@ -112,6 +131,20 @@ parse_arguments() {
                 DEBUG_FLAGS="$2"
                 shift 2
                 ;;
+            --log-file)
+                LOG_FILE="$2"
+                shift 2
+                ;;
+            -v|--verbose)
+                VERBOSE=1
+                LOG_LEVEL="verbose"
+                shift
+                ;;
+            -q|--quiet)
+                QUIET=1
+                LOG_LEVEL="quiet"
+                shift
+                ;;
             *)
                 log_error "未知选项: $1"
                 show_help
@@ -119,6 +152,126 @@ parse_arguments() {
                 ;;
         esac
     done
+}
+
+# ============= 日志功能 =============
+
+# Initialize log file
+init_log_file() {
+    if [ -z "$LOG_FILE" ]; then
+        # Generate default log file name with timestamp
+        local timestamp=$(date +"%Y%m%d_%H%M%S")
+        LOG_FILE="$SCRIPT_DIR/build_${timestamp}.log"
+    fi
+    
+    # Convert relative path to absolute path
+    if [[ "$LOG_FILE" != /* ]]; then
+        LOG_FILE="$SCRIPT_DIR/$LOG_FILE"
+    fi
+    
+    # Create log directory if needed
+    local log_dir=$(dirname "$LOG_FILE")
+    mkdir -p "$log_dir"
+    
+    # Start logging
+    {
+        echo "=========================================="
+        echo "FFmpeg Mac 构建日志"
+        echo "版本: $SCRIPT_VERSION"
+        echo "开始时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "日志文件: $LOG_FILE"
+        echo "=========================================="
+        echo ""
+    } | tee -a "$LOG_FILE" > /dev/null
+    
+    log_info "日志文件: $LOG_FILE"
+}
+
+# Enhanced logging function that writes to both terminal and log file
+log_with_file() {
+    local level="$1"
+    shift
+    local message="$*"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Determine if we should output based on log level
+    local should_output=1
+    if [ "$LOG_LEVEL" = "quiet" ] && [ "$level" != "error" ] && [ "$level" != "warning" ]; then
+        should_output=0
+    fi
+    
+    # Output to terminal (with colors) and log file (without colors)
+    if [ $should_output -eq 1 ]; then
+        case "$level" in
+            info)
+                echo -e "${BLUE}[INFO]${NC} $message" | tee -a "$LOG_FILE"
+                ;;
+            success)
+                echo -e "${GREEN}[SUCCESS]${NC} $message" | tee -a "$LOG_FILE"
+                ;;
+            warning)
+                echo -e "${YELLOW}[WARNING]${NC} $message" | tee -a "$LOG_FILE"
+                ;;
+            error)
+                echo -e "${RED}[ERROR]${NC} $message" | tee -a "$LOG_FILE"
+                ;;
+            step)
+                echo -e "${CYAN}[STEP]${NC} $message" | tee -a "$LOG_FILE"
+                ;;
+            verbose)
+                if [ "$LOG_LEVEL" = "verbose" ] || [ "$VERBOSE" = "1" ]; then
+                    echo -e "${MAGENTA}[VERBOSE]${NC} $message" | tee -a "$LOG_FILE"
+                else
+                    echo "[VERBOSE] $message" >> "$LOG_FILE"
+                fi
+                ;;
+            *)
+                echo "$message" | tee -a "$LOG_FILE"
+                ;;
+        esac
+    else
+        # Only write to log file in quiet mode
+        echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+    fi
+}
+
+# Override log functions to use log_with_file (will be called after init_log_file)
+# These functions will use file logging if LOG_FILE is set, otherwise use standard logging
+override_log_functions() {
+    if [ -n "$LOG_FILE" ]; then
+        log_info() {
+            log_with_file "info" "$@"
+        }
+        
+        log_success() {
+            log_with_file "success" "$@"
+        }
+        
+        log_warning() {
+            log_with_file "warning" "$@"
+        }
+        
+        log_error() {
+            log_with_file "error" "$@"
+        }
+        
+        log_step() {
+            log_with_file "step" "$@"
+        }
+    fi
+}
+
+# Log verbose messages (always available)
+log_verbose() {
+    log_with_file "verbose" "$@"
+}
+
+# Log command execution
+log_command() {
+    if [ "$VERBOSE" = "1" ] || [ "$LOG_LEVEL" = "verbose" ]; then
+        log_verbose "执行命令: $*"
+    fi
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 执行: $*" >> "$LOG_FILE"
 }
 
 # ============= 清理功能 =============
@@ -165,7 +318,7 @@ check_dependencies() {
     local required_tools=(
         "autoconf" "automake" "cmake" "git" "git-svn"
         "libtool" "make" "meson" "nasm" "ninja"
-        "pkg-config" "python3" "yasm"
+        "pkg-config" "python3" "vulkan-headers" "yasm"
     )
 
     log_info "检查必需工具..."
@@ -193,15 +346,24 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
+    # Initialize log file
+    init_log_file
+    
+    # Override log functions to use file logging
+    override_log_functions
+    
     # Export configuration
     export MAX_PARALLEL_JOBS
     export FORCE_REBUILD
     export DEBUG_ENABLED
     export DEBUG_FLAGS
+    export LOG_FILE
+    export LOG_LEVEL
+    export VERBOSE
 
     # Show banner
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  FFmpeg Mac 构建脚本 v2.0${NC}"
+    echo -e "${GREEN}  FFmpeg Mac 构建脚本 v${SCRIPT_VERSION}${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
     log_info "项目目录: $SCRIPT_DIR"
@@ -245,6 +407,17 @@ main() {
         log_info "构建指定的库: ${SPECIFIC_LIBS[*]}"
         build_specific_libraries "$FFMPEG_SOURCES" "$FFMPEG_BUILD" "${SPECIFIC_LIBS[@]}" || {
             log_error "构建失败"
+            if [ -n "$LOG_FILE" ]; then
+                {
+                    echo ""
+                    echo "=========================================="
+                    echo "构建失败"
+                    echo "结束时间: $(date '+%Y-%m-%d %H:%M:%S')"
+                    echo "状态: 失败"
+                    echo "日志文件: $LOG_FILE"
+                    echo "=========================================="
+                } >> "$LOG_FILE"
+            fi
             exit 1
         }
     else
@@ -280,6 +453,10 @@ main() {
     echo "  动态库文件: $FFMPEG_BUILD/lib"
     echo "  头文件: $FFMPEG_BUILD/include"
     echo ""
+    if [ -n "$LOG_FILE" ]; then
+        log_info "构建日志: $LOG_FILE"
+        echo ""
+    fi
     log_info "环境设置:"
     echo "  运行以下命令或使用 env_setup.sh 脚本:"
     echo "    export PATH=\"$BIN_DIR:\$PATH\""
@@ -288,6 +465,17 @@ main() {
     log_info "验证安装:"
     echo "  $BIN_DIR/ffmpeg -version"
     echo ""
+    
+    # Write summary to log file
+    {
+        echo ""
+        echo "=========================================="
+        echo "构建完成"
+        echo "结束时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "构建时间: ${minutes}分${seconds}秒"
+        echo "状态: 成功"
+        echo "=========================================="
+    } >> "$LOG_FILE"
 }
 
 # Run main function

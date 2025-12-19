@@ -3,6 +3,9 @@ ffmpeg_sources/
 ffmpeg_build/
 bin/
 
+# 构建标记（增量构建使用）
+.build_markers/
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -17,6 +20,19 @@ bin/
 
 # 日志
 *.log
+build.log
+*.build.log
+
+# 临时文件
+*.tmp
+*.temp
+*.cache
+
+# 测试文件
+test_*.mp4
+test_*.mkv
+test_*.avi
+*.test
 
 # 备份文件
 *.bak

@@ -49,6 +49,7 @@ build_libaom() {
     log_info "Configuring $LIB_NAME..."
     cmake -G "Unix Makefiles" \
         -DCMAKE_INSTALL_PREFIX="$ffmpeg_build" \
+        -DCMAKE_INSTALL_NAME_DIR="$ffmpeg_build/lib" \
         -DENABLE_SHARED=1 \
         -DENABLE_NASM=on \
         ..
@@ -58,6 +59,15 @@ build_libaom() {
 
     log_info "Installing $LIB_NAME..."
     make install
+
+    # Fix dylib install name (libaom may use relative paths)
+    log_info "Fixing dylib install name for $LIB_NAME..."
+    for dylib in "$ffmpeg_build/lib"/libaom*.dylib; do
+        if [ -f "$dylib" ] && [ ! -L "$dylib" ]; then
+            local dylib_name=$(basename "$dylib")
+            install_name_tool -id "$ffmpeg_build/lib/$dylib_name" "$dylib" 2>/dev/null || true
+        fi
+    done
 
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$version"

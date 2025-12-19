@@ -54,6 +54,15 @@ build_libplacebo() {
     log_info "Installing $LIB_NAME..."
     ninja -C build install
 
+    # Fix dylib install name (libplacebo may use relative paths)
+    log_info "Fixing dylib install name for $LIB_NAME..."
+    for dylib in "$ffmpeg_build/lib"/libplacebo*.dylib; do
+        if [ -f "$dylib" ] && [ ! -L "$dylib" ]; then
+            local dylib_name=$(basename "$dylib")
+            install_name_tool -id "$ffmpeg_build/lib/$dylib_name" "$dylib" 2>/dev/null || true
+        fi
+    done
+
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$version"
     log_success "$LIB_NAME build completed"

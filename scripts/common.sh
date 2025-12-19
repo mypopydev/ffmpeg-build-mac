@@ -68,6 +68,11 @@ needs_rebuild() {
         return 0
     fi
 
+    # Check if debug mode changed since last build
+    if debug_mode_changed "$lib_name" "$build_marker"; then
+        return 0
+    fi
+
     # Check if source directory has newer files than marker
     if [ -d "$source_dir" ]; then
         local newer_files=$(find "$source_dir" -newer "$build_marker" -type f 2>/dev/null | head -n 1)
@@ -90,7 +95,14 @@ mark_built() {
     mkdir -p "$(dirname "$build_marker")"
     echo "Built on: $(date)" > "$build_marker"
     echo "Version: $version" >> "$build_marker"
-    log_success "$lib_name: Build marker created"
+    echo "Debug: ${DEBUG_ENABLED:-0}" >> "$build_marker"
+    echo "Debug flags: ${DEBUG_FLAGS:--g -O0}" >> "$build_marker"
+
+    if is_debug_enabled; then
+        log_success "$lib_name: Debug build marker created"
+    else
+        log_success "$lib_name: Release build marker created"
+    fi
 }
 
 # ============= Git Functions =============
@@ -312,6 +324,51 @@ show_progress() {
     echo -e "${MAGENTA}[$current/$total]${NC} $name"
 }
 
+# ============= Debug Mode Functions =============
+
+# Check if debug mode is enabled
+is_debug_enabled() {
+    [ "${DEBUG_ENABLED:-0}" = "1" ]
+}
+
+# Get debug compilation flags
+get_debug_flags() {
+    if is_debug_enabled; then
+        echo "${DEBUG_FLAGS:--g -O0}"
+    else
+        echo ""
+    fi
+}
+
+# Get optimized compilation flags
+get_release_flags() {
+    if is_debug_enabled; then
+        echo "-O0"
+    else
+        echo "-O2"
+    fi
+}
+
+# Check if debug mode changed since last build
+debug_mode_changed() {
+    local lib_name="$1"
+    local build_marker="$2"
+
+    if [ ! -f "$build_marker" ]; then
+        return 0  # Marker doesn't exist, need rebuild
+    fi
+
+    local prev_debug=$(grep "^Debug:" "$build_marker" 2>/dev/null | cut -d' ' -f2)
+    local current_debug="${DEBUG_ENABLED:-0}"
+
+    if [ "$prev_debug" != "$current_debug" ]; then
+        log_info "$lib_name: Debug mode changed ($prev_debug -> $current_debug), rebuild needed"
+        return 0
+    fi
+
+    return 1
+}
+
 # Export all functions
 export -f log_info log_success log_warning log_error log_step
 export -f get_project_root load_versions needs_rebuild mark_built
@@ -320,3 +377,4 @@ export -f command_exists check_required_tools setup_build_dirs
 export -f get_build_marker is_force_rebuild
 export -f get_dependencies check_dependencies clean_library
 export -f setup_error_handling error_handler show_progress
+export -f is_debug_enabled get_debug_flags get_release_flags debug_mode_changed

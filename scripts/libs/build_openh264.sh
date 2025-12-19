@@ -36,7 +36,13 @@ build_openh264() {
     cd "$source_dir"
 
     log_info "Compiling $LIB_NAME..."
-    run_make PREFIX="$ffmpeg_build"
+
+    # Set debug flags for openh264
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
+    # Openh264 uses a different build system, set flags via environment
+    CFLAGS="$debug_flags $release_flags" CXXFLAGS="$debug_flags $release_flags" run_make PREFIX="$ffmpeg_build"
 
     log_info "Installing $LIB_NAME..."
     make install PREFIX="$ffmpeg_build"

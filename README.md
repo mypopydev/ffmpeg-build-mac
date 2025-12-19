@@ -193,6 +193,94 @@ source ./env_setup.sh --permanent
 - **视频处理:**
   - libplacebo (GPU 加速视频处理)
 
+## 🔧 Debug编译支持
+
+v2.0版本新增了debug编译支持，可以构建包含调试符号的版本，便于调试和问题排查。
+
+### ✅ 支持的库
+
+**所有13个库都支持debug编译：**
+- ✅ FFmpeg
+- ✅ x264 (H.264编码器)
+- ✅ x265 (H.265/HEVC编码器)
+- ✅ fdk-aac (AAC音频编码器)
+- ✅ lame (MP3音频编码器)
+- ✅ opus (Opus音频编码器)
+- ✅ libvpx (VP8/VP9视频编码器)
+- ✅ libaom (AV1视频编码器)
+- ✅ openh264 (H.264编码器)
+- ✅ kvazaar (H.265/HEVC编码器)
+- ✅ svtav1 (AV1视频编码器)
+- ✅ dav1d (AV1视频解码器)
+- ✅ libplacebo (GPU加速视频处理)
+
+### Debug模式构建
+
+```bash
+# 构建所有库的debug版本
+./build_mac.sh --debug
+
+# 只构建FFmpeg的debug版本
+./build_mac.sh --debug --lib ffmpeg
+
+# 自定义debug编译标志
+./build_mac.sh --debug --debug-flags="-g -O1 -fno-omit-frame-pointer"
+
+# 并行debug构建（8个任务）
+./build_mac.sh --debug -j 8
+```
+
+### Debug模式特性
+
+- **调试符号**: 包含完整的调试信息，支持gdb、lldb等调试器
+- **优化级别**: 默认使用-O0（无优化），便于调试
+- **增量构建**: debug模式变更会自动触发重新编译
+- **构建标记**: 记录debug状态，便于追踪
+
+### 验证Debug构建
+
+使用专门的验证脚本检查debug构建是否成功：
+
+```bash
+# 验证debug构建
+./validate_debug.sh
+
+# 检查特定文件
+file ./ffmpeg_build/bin/ffmpeg
+nm -g ./ffmpeg_build/bin/ffmpeg | grep -i debug
+
+# 使用lldb调试
+lldb ./ffmpeg_build/bin/ffmpeg
+```
+
+### Debug模式切换
+
+```bash
+# 从release切换到debug（需要重新编译）
+./build_mac.sh --debug --force
+
+# 从debug切换回release
+./build_mac.sh --force
+```
+
+### 调试示例
+
+```bash
+# 设置环境变量
+source ./env_setup.sh -t
+
+# 使用lldb调试FFmpeg
+lldb ./ffmpeg_build/bin/ffmpeg
+(lldb) run -version
+(lldb) breakpoint set --name main
+(lldb) continue
+
+# 使用gdb调试
+DYLD_LIBRARY_PATH=./ffmpeg_build/lib gdb ./ffmpeg_build/bin/ffmpeg
+(gdb) break main
+(gdb) run
+```
+
 ## 高级用法
 
 ### 自定义配置

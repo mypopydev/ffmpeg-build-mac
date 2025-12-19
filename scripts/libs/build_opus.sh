@@ -39,7 +39,13 @@ build_opus() {
     ./autogen.sh
 
     log_info "Configuring $LIB_NAME..."
-    ./configure --prefix="$ffmpeg_build" --enable-shared
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
+    ./configure --prefix="$ffmpeg_build" \
+        --enable-shared \
+        CFLAGS="$debug_flags $release_flags" \
+        CXXFLAGS="$debug_flags $release_flags"
 
     log_info "Compiling $LIB_NAME..."
     run_make

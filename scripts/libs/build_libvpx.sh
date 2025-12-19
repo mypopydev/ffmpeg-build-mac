@@ -36,11 +36,16 @@ build_libvpx() {
     cd "$source_dir"
 
     log_info "Configuring $LIB_NAME..."
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
     ./configure --prefix="$ffmpeg_build" \
         --disable-examples \
         --disable-unit-tests \
         --enable-vp9-highbitdepth \
         --enable-shared \
+        --extra-cflags="$debug_flags $release_flags" \
+        --extra-cxxflags="$debug_flags $release_flags" \
         --as=yasm
 
     log_info "Compiling $LIB_NAME..."

@@ -50,10 +50,15 @@ build_lame() {
     fi
 
     log_info "Configuring $LIB_NAME..."
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
     ./configure --prefix="$ffmpeg_build" \
         --bindir="$ffmpeg_build/bin" \
         --enable-shared \
-        --enable-nasm
+        --enable-nasm \
+        CFLAGS="$debug_flags $release_flags" \
+        CXXFLAGS="$debug_flags $release_flags"
 
     log_info "Compiling $LIB_NAME..."
     run_make

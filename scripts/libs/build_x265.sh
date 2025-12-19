@@ -38,9 +38,21 @@ build_x265() {
     cd build/macos
 
     log_info "Configuring $LIB_NAME..."
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
+    # Set CMAKE_BUILD_TYPE based on debug mode
+    local build_type="Release"
+    if is_debug_enabled; then
+        build_type="Debug"
+    fi
+
     cmake -G "Unix Makefiles" \
         -DCMAKE_INSTALL_PREFIX="$ffmpeg_build" \
         -DCMAKE_INSTALL_NAME_DIR="$ffmpeg_build/lib" \
+        -DCMAKE_BUILD_TYPE="$build_type" \
+        -DCMAKE_C_FLAGS="$debug_flags $release_flags" \
+        -DCMAKE_CXX_FLAGS="$debug_flags $release_flags" \
         -DENABLE_SHARED:bool=on \
         ../../source
 

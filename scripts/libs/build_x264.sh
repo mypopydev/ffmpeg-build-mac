@@ -35,11 +35,16 @@ build_x264() {
     # Build
     cd "$source_dir"
     log_info "Configuring $LIB_NAME..."
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
     PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" ./configure \
         --prefix="$ffmpeg_build" \
         --bindir="$ffmpeg_build/bin" \
         --enable-shared \
-        --enable-pic
+        --enable-pic \
+        --extra-cflags="$debug_flags $release_flags" \
+        --extra-ldflags="$debug_flags"
 
     log_info "Compiling $LIB_NAME..."
     run_make

@@ -46,13 +46,17 @@ build_ffmpeg() {
     fi
 
     log_info "Configuring FFmpeg..."
+    local debug_flags=$(get_debug_flags)
+    local release_flags=$(get_release_flags)
+
     PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" ./configure \
         --prefix="$ffmpeg_build" \
-        --extra-cflags="-I$ffmpeg_build/include $vulkan_include" \
-        --extra-ldflags="-L$ffmpeg_build/lib" \
+        --extra-cflags="-I$ffmpeg_build/include $vulkan_include $debug_flags $release_flags" \
+        --extra-ldflags="-L$ffmpeg_build/lib $debug_flags" \
         --extra-libs="-lpthread -lm" \
         --bindir="$ffmpeg_build/bin" \
         --enable-shared \
+        --enable-debug \
         --enable-gpl \
         --enable-libfdk_aac \
         --enable-libfreetype \

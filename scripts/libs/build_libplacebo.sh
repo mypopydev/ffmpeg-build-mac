@@ -43,9 +43,16 @@ build_libplacebo() {
     rm -rf build
 
     log_info "Configuring $LIB_NAME with meson..."
+
+    # Set build type based on debug mode
+    local build_type="release"
+    if is_debug_enabled; then
+        build_type="debug"
+    fi
+
     PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" meson setup build \
         --prefix="$ffmpeg_build" \
-        --buildtype=release \
+        --buildtype="$build_type" \
         --default-library=shared
 
     log_info "Compiling $LIB_NAME..."

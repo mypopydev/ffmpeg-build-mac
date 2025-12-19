@@ -29,6 +29,8 @@ MAX_PARALLEL_JOBS=4
 FORCE_REBUILD=0
 CLEAN_MODE=""
 SPECIFIC_LIBS=()
+DEBUG_ENABLED=0
+DEBUG_FLAGS="-g -O0"
 
 # ============= 帮助信息 =============
 show_help() {
@@ -44,6 +46,8 @@ FFmpeg Mac 构建脚本 v2.0
     -f, --force             强制重新编译所有库
     -l, --lib LIB           只构建指定的库（可多次使用）
     -c, --clean [mode]      清理模式: all, build, sources
+    -d, --debug             启用debug编译（包含调试符号）
+    --debug-flags FLAGS     自定义debug编译标志（默认: "-g -O0"）
     --version MODE          版本模式: stable, latest (默认: 从 config/versions.conf 读取)
 
 示例:
@@ -54,6 +58,9 @@ FFmpeg Mac 构建脚本 v2.0
     $0 -s                   # 顺序构建
     $0 -c build             # 清理构建产物但保留源码
     $0 --version stable     # 使用稳定版本
+    $0 -d                   # debug模式构建（包含调试符号）
+    $0 -d -l ffmpeg         # 只构建FFmpeg的debug版本
+    $0 --debug-flags="-g -O1" # 自定义debug编译标志
 
 支持的库:
     x264, x265, fdk-aac, lame, opus, libvpx, libaom,
@@ -95,6 +102,14 @@ parse_arguments() {
                 ;;
             --version)
                 BUILD_MODE="$2"
+                shift 2
+                ;;
+            -d|--debug)
+                DEBUG_ENABLED=1
+                shift
+                ;;
+            --debug-flags)
+                DEBUG_FLAGS="$2"
                 shift 2
                 ;;
             *)
@@ -181,6 +196,8 @@ main() {
     # Export configuration
     export MAX_PARALLEL_JOBS
     export FORCE_REBUILD
+    export DEBUG_ENABLED
+    export DEBUG_FLAGS
 
     # Show banner
     echo -e "${GREEN}========================================${NC}"
@@ -190,6 +207,14 @@ main() {
     log_info "项目目录: $SCRIPT_DIR"
     log_info "构建目录: $FFMPEG_BUILD"
     log_info "源码目录: $FFMPEG_SOURCES"
+
+    # Show debug mode status
+    if [ "$DEBUG_ENABLED" = "1" ]; then
+        log_info "构建模式: DEBUG (包含调试符号)"
+        log_info "Debug标志: $DEBUG_FLAGS"
+    else
+        log_info "构建模式: RELEASE (优化编译)"
+    fi
     echo ""
 
     # Handle clean mode

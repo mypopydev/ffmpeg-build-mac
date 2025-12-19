@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common.sh"
 
 LIB_NAME="ffmpeg"
+REPO_URL="https://git.ffmpeg.org/ffmpeg.git"
 
 build_ffmpeg() {
     local ffmpeg_sources="$1"
@@ -15,21 +16,20 @@ build_ffmpeg() {
 
     log_step "Building FFmpeg"
 
-    # FFmpeg source is in the parent directory of the build script location
-    local source_dir="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    local source_dir="$ffmpeg_sources/$LIB_NAME"
     local build_marker=$(get_build_marker "$ffmpeg_build" "$LIB_NAME")
-
-    # Check dependencies
-    if ! check_dependencies "$LIB_NAME" "$ffmpeg_build"; then
-        log_error "FFmpeg dependencies not met"
-        return 1
-    fi
 
     # Check if rebuild is needed
     if ! is_force_rebuild && ! needs_rebuild "$LIB_NAME" "$source_dir" "$build_marker"; then
         log_info "FFmpeg is up to date, skipping"
         return 0
     fi
+
+    # Clone or update FFmpeg repository
+    git_clone_or_update "$REPO_URL" "$source_dir" "latest" || {
+        log_error "Failed to clone/update FFmpeg"
+        return 1
+    }
 
     # Build
     cd "$source_dir"

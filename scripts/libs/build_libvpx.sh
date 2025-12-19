@@ -49,6 +49,15 @@ build_libvpx() {
     log_info "Installing $LIB_NAME..."
     make install
 
+    # Fix dylib install name (libvpx uses relative path by default)
+    log_info "Fixing dylib install name for $LIB_NAME..."
+    local dylib_file="$ffmpeg_build/lib/libvpx.dylib"
+    if [ -f "$dylib_file" ]; then
+        local real_file=$(readlink -f "$dylib_file" 2>/dev/null || greadlink -f "$dylib_file" 2>/dev/null || echo "$dylib_file")
+        local dylib_name=$(basename "$real_file")
+        install_name_tool -id "$ffmpeg_build/lib/$dylib_name" "$real_file" 2>/dev/null || true
+    fi
+
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$version"
     log_success "$LIB_NAME build completed"

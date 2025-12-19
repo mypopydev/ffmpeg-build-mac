@@ -50,7 +50,7 @@ build_libaom() {
     cmake -G "Unix Makefiles" \
         -DCMAKE_INSTALL_PREFIX="$ffmpeg_build" \
         -DCMAKE_INSTALL_NAME_DIR="$ffmpeg_build/lib" \
-        -DENABLE_SHARED=1 \
+        -DBUILD_SHARED_LIBS=1 \
         -DENABLE_NASM=on \
         ..
 

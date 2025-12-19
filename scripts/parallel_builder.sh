@@ -30,17 +30,23 @@ declare -a GROUP_2=(
     "ffmpeg"
 )
 
+# Normalize library name (convert hyphens to underscores for script/function names)
+normalize_lib_name() {
+    echo "$1" | tr '-' '_'
+}
+
 # Build a single library
 build_library() {
     local lib_name="$1"
     local ffmpeg_sources="$2"
     local ffmpeg_build="$3"
-    local lib_script="$SCRIPT_DIR/libs/build_${lib_name}.sh"
+    local normalized_name=$(normalize_lib_name "$lib_name")
+    local lib_script="$SCRIPT_DIR/libs/build_${normalized_name}.sh"
 
     if [ -f "$lib_script" ]; then
         log_info "Building $lib_name..."
         source "$lib_script"
-        build_${lib_name} "$ffmpeg_sources" "$ffmpeg_build"
+        build_${normalized_name} "$ffmpeg_sources" "$ffmpeg_build"
         return $?
     else
         log_error "Build script not found: $lib_script"

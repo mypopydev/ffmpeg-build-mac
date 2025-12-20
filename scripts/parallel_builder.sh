@@ -5,8 +5,9 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+# Get the scripts directory (not the project root)
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPTS_DIR/common.sh"
 
 # Define build groups (libraries that can be built in parallel)
 # Group 1: No dependencies - all audio/video codecs and processing libraries without interdependencies
@@ -41,7 +42,7 @@ build_library() {
     local ffmpeg_sources="$2"
     local ffmpeg_build="$3"
     local normalized_name=$(normalize_lib_name "$lib_name")
-    local lib_script="$SCRIPT_DIR/libs/build_${normalized_name}.sh"
+    local lib_script="$SCRIPTS_DIR/libs/build_${normalized_name}.sh"
 
     if [ -f "$lib_script" ]; then
         log_info "Building $lib_name..."

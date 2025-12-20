@@ -1,332 +1,338 @@
 # FFmpeg Mac 构建指南
 
-本指南基于 [CentOS 编译指南](https://trac.ffmpeg.org/wiki/CompilationGuide/Centos)，适配 macOS 系统。
+详细的技术文档，说明如何在 macOS 上构建 FFmpeg 及其依赖库。
 
-**注意**: 本构建脚本使用动态链接，所有库和 FFmpeg 都构建为共享库（.dylib）。需要设置 `DYLD_LIBRARY_PATH` 环境变量以便运行时找到动态库。
+> 💡 **快速开始**: 大多数用户只需参考 [README.md](README.md)。本文档面向需要了解技术细节或自定义构建的用户。
 
-## 前置要求
+## 目录
 
-1. **macOS** (推荐 macOS 10.15 或更高版本)
-2. **Homebrew** - macOS 包管理器
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-3. **Xcode Command Line Tools**
-   ```bash
-   xcode-select --install
-   ```
+- [系统要求](#系统要求)
+- [构建架构](#构建架构)
+- [使用构建脚本](#使用构建脚本)
+- [手动构建](#手动构建)
+- [环境配置](#环境配置)
+- [自定义配置](#自定义配置)
+- [故障排除](#故障排除)
 
-## 快速开始
+## 系统要求
 
-### 方法 1: 使用构建脚本（推荐）
+### 操作系统
+- macOS 10.15+ (Catalina 或更高)
+- 推荐使用最新版 macOS
+
+### 必需工具
+
+通过 Homebrew 安装：
+```bash
+# 安装 Homebrew（如未安装）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 安装 Xcode Command Line Tools
+xcode-select --install
+
+# 构建脚本会自动安装其他依赖
+```
+
+## 构建架构
+
+### 动态链接架构
+
+本构建系统使用**动态链接**（shared libraries），所有库编译为 `.dylib` 格式：
+
+```
+优势：
+✅ 减少可执行文件大小
+✅ 库可独立更新
+✅ 内存共享，节省资源
+
+注意：
+⚠️  需要设置 DYLD_LIBRARY_PATH
+⚠️  运行时需要 .dylib 文件
+```
+
+### 目录结构
+
+```
+ffmpeg-build-mac/
+├── ffmpeg_sources/      # 所有源代码
+│   ├── x264/
+│   ├── x265_git/
+│   ├── ffmpeg/
+│   └── ...
+└── ffmpeg_build/        # 统一安装目录
+    ├── bin/            # 可执行文件
+    ├── lib/            # 动态库 (.dylib)
+    ├── include/        # 头文件
+    └── .build_markers/ # 增量构建状态
+```
+
+## 使用构建脚本
+
+### 基本用法
 
 ```bash
-# 赋予执行权限
-chmod +x build_mac.sh
-
-# 运行构建脚本
+# 完整构建（推荐）
 ./build_mac.sh
+
+# 查看所有选项
+./build_mac.sh --help
 ```
 
-构建脚本会自动：
-- 安装所有必需的依赖
-- 编译外部库（x264, x265, openh264, Kvazaar, fdk-aac, lame, opus, vpx, aom, SVT-AV1, dav1d）
-- 编译 FFmpeg
-- 所有库和 FFmpeg 都构建为动态链接（共享库）
-
-### 方法 2: 手动构建
-
-如果你想手动控制构建过程，可以按照以下步骤：
-
-#### 1. 安装依赖
+### 常用场景
 
 ```bash
-brew install \
-    autoconf \
-    automake \
-    cmake \
-    freetype \
-    git \
-    git-svn \
-    libtool \
-    make \
-    meson \
-    nasm \
-    ninja \
-    pkg-config \
-    python3 \
-    yasm \
-    zlib \
-    bzip2
+# 快速并行构建
+./build_mac.sh -j 8
+
+# 只构建特定库
+./build_mac.sh -l x264 -l ffmpeg
+
+# Debug 版本（包含调试符号）
+./build_mac.sh -d
+
+# 强制重新编译
+./build_mac.sh -f
+
+# 清理并重建
+./build_mac.sh -c build -f
 ```
 
-#### 2. 创建构建目录
+## 手动构建
+
+### 1. 准备环境
 
 ```bash
-mkdir -p ffmpeg_sources
-mkdir -p ffmpeg_build/{bin,lib,include,share}
+# 创建目录
+mkdir -p ffmpeg_sources ffmpeg_build/{bin,lib,include}
+
+# 设置环境变量
+export FFMPEG_BUILD="$(pwd)/ffmpeg_build"
+export PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig"
 ```
 
-#### 3. 编译外部库
+### 2. 编译库
 
-参考 `build_mac.sh` 脚本中的各个库的编译步骤。
-
-#### 4. 编译 FFmpeg
+参考 `scripts/libs/build_*.sh` 中的编译步骤，例如：
 
 ```bash
-PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig" ./configure \
-    --prefix="./ffmpeg_build" \
-    --extra-cflags="-I./ffmpeg_build/include" \
-    --extra-ldflags="-L./ffmpeg_build/lib" \
-    --extra-libs="-lpthread -lm" \
-    --bindir="./ffmpeg_build/bin" \
+# x264
+cd ffmpeg_sources
+git clone https://code.videolan.org/videolan/x264.git
+cd x264
+./configure --prefix="$FFMPEG_BUILD" --enable-shared --enable-pic
+make -j$(sysctl -n hw.ncpu)
+make install
+```
+
+### 3. 编译 FFmpeg
+
+```bash
+cd ffmpeg_sources/ffmpeg
+PKG_CONFIG_PATH="$FFMPEG_BUILD/lib/pkgconfig" ./configure \
+    --prefix="$FFMPEG_BUILD" \
+    --bindir="$FFMPEG_BUILD/bin" \
     --enable-shared \
     --enable-gpl \
-    --enable-libfdk_aac \
-    --enable-libfreetype \
+    --enable-nonfree \
+    --enable-version3 \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-libfdk-aac \
     --enable-libmp3lame \
     --enable-libopus \
     --enable-libvpx \
-    --enable-libx264 \
-    --enable-libx265 \
     --enable-libaom \
     --enable-libopenh264 \
     --enable-libkvazaar \
     --enable-libsvtav1 \
     --enable-libdav1d \
-    --enable-nonfree \
-    --enable-version3
+    --enable-libplacebo
 
 make -j$(sysctl -n hw.ncpu)
 make install
 ```
 
-## 目录结构
+## 环境配置
 
-构建完成后，会创建以下目录结构：
+### 临时设置（推荐用于测试）
 
-```
-ffmpeg-source/
-├── build_mac.sh          # 构建脚本
-├── ffmpeg_sources/       # 外部库源代码
-│   ├── nasm/             # NASM 源码
-│   ├── yasm/             # Yasm 源码
-│   ├── x264/             # libx264 源码
-│   ├── x265_git/         # libx265 源码
-│   ├── fdk-aac/          # libfdk_aac 源码
-│   ├── lame/             # libmp3lame 源码
-│   ├── opus/             # libopus 源码
-│   ├── libvpx/           # libvpx 源码
-│   ├── aom/              # libaom 源码
-│   ├── openh264/         # openh264 源码
-│   ├── kvazaar/          # Kvazaar 源码
-│   ├── SVT-AV1/          # SVT-AV1 源码
-│   └── dav1d/            # dav1d 源码
-└── ffmpeg_build/         # 所有编译后的文件（统一安装目录）
-    ├── bin/              # 所有可执行文件
-    │   ├── ffmpeg        # FFmpeg 主程序
-    │   ├── ffprobe       # FFmpeg 探测工具
-    │   ├── ffplay        # FFmpeg 播放器
-    │   ├── x264          # x264 编码器
-    │   ├── lame          # MP3 编码器
-    │   ├── nasm          # NASM 汇编器
-    │   └── yasm          # Yasm 汇编器
-    ├── lib/              # 所有库文件
-    │   ├── *.dylib       # 动态库文件（macOS）
-    │   └── pkgconfig/    # pkg-config 配置文件
-    ├── include/          # 所有头文件
-    └── share/            # 其他共享文件
-```
-
-**重要说明**：
-- 所有编译产物（可执行文件、库文件、头文件）都统一安装到 `ffmpeg_build/` 目录下
-- 这种设计便于管理和清理，删除 `ffmpeg_build/` 和 `ffmpeg_sources/` 即可完全清理构建产物
-- 不会影响系统目录，完全非侵入式安装
-
-## 使用构建的 FFmpeg
-
-### 添加到 PATH 和动态库路径
-
-由于使用动态链接，需要同时设置 PATH 和 DYLD_LIBRARY_PATH：
-
-临时添加（当前终端会话）：
 ```bash
 export PATH="$(pwd)/ffmpeg_build/bin:$PATH"
 export DYLD_LIBRARY_PATH="$(pwd)/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
 ```
 
-永久添加（推荐）：
+### 永久设置
+
+使用提供的环境脚本：
 ```bash
-echo 'export PATH="'$(pwd)'/ffmpeg_build/bin:$PATH"' >> ~/.zshrc
-echo 'export DYLD_LIBRARY_PATH="'$(pwd)'/ffmpeg_build/lib:$DYLD_LIBRARY_PATH"' >> ~/.zshrc
-source ~/.zshrc
+# 临时设置
+source ./env_setup.sh -t
+
+# 永久设置（写入 ~/.zshrc）
+source ./env_setup.sh -p
 ```
 
-**注意**: `DYLD_LIBRARY_PATH` 是 macOS 上用于指定动态库搜索路径的环境变量，必须设置才能正确运行 FFmpeg。
-
-### 验证安装
+### 验证配置
 
 ```bash
-./ffmpeg_build/bin/ffmpeg -version
-./ffmpeg_build/bin/ffprobe -version
-```
+# 检查 FFmpeg 版本
+ffmpeg -version
 
-## 包含的编码器
+# 检查动态库依赖
+otool -L $(which ffmpeg)
 
-构建的 FFmpeg 包含以下编码器（**所有库均使用最新开发版本**）：
-
-- **视频编码器:**
-  - H.264 (libx264, openh264) - 从 Git 仓库获取最新开发版本
-  - H.265/HEVC (libx265, Kvazaar) - 从 Git 仓库获取最新开发版本
-  - VP8/VP9 (libvpx) - 从 Git 仓库获取最新开发版本
-  - AV1 (libaom, SVT-AV1) - 从 Git 仓库获取最新开发版本
-  - AV1 解码器 (dav1d) - 从 Git 仓库获取最新开发版本
-
-- **音频编码器:**
-  - AAC (libfdk_aac) - 从 Git 仓库获取最新开发版本
-  - MP3 (libmp3lame) - 从 SVN 仓库通过 git-svn 获取最新开发版本
-  - Opus (libopus) - 从 Git 仓库获取最新开发版本
-
-- **汇编器:**
-  - NASM - 使用系统安装的版本（通过 Homebrew）
-  - Yasm - 使用系统安装的版本（通过 Homebrew）
-
-**注意:** 使用开发版本意味着你将获得最新的功能和修复，但也可能包含未完全测试的代码。如果遇到问题，可以考虑切换到稳定分支。
-
-## 更新 FFmpeg
-
-### 更新外部库
-
-所有外部库都从 Git 仓库获取，更新非常简单：
-
-```bash
-# 更新所有外部库到最新开发版本
-cd ffmpeg_sources
-
-# 更新各个库（nasm 和 yasm 使用系统版本，无需更新）
-cd x264 && git pull && cd ..
-cd x265_git && git pull && cd ..
-cd fdk-aac && git pull && cd ..
-cd lame && git svn rebase && cd ..
-cd opus && git pull && cd ..
-cd libvpx && git pull && cd ..
-cd aom && git pull && cd ..
-cd openh264 && git pull && cd ..
-cd kvazaar && git pull && cd ..
-cd SVT-AV1 && git pull && cd ..
-cd dav1d && git pull && cd ..
-```
-
-然后重新运行 `build_mac.sh` 脚本，它会自动重新编译所有更新的库。
-
-### 更新 FFmpeg
-
-```bash
-# 在 FFmpeg 源码目录
-git pull
-# 重新运行 build_mac.sh 或手动运行 configure, make, make install
-```
-
-### 切换到稳定版本
-
-如果你遇到开发版本的问题，可以切换到稳定分支：
-
-```bash
-cd ffmpeg_sources/x264
-git checkout stable
-# 其他库类似，使用 git checkout stable 或 git checkout master
-```
-
-## 清理构建
-
-删除构建目录和源代码目录即可完全清理：
-
-```bash
-rm -rf ffmpeg_build ffmpeg_sources
-```
-
-**注意**：所有编译产物都在 `ffmpeg_build/` 目录下，删除该目录即可清理所有构建文件。
-
-## 故障排除
-
-### 问题: "nasm not found" 或版本过低
-
-**解决方案:**
-```bash
-brew install nasm
-# 或者从源码编译最新版本（见 build_mac.sh）
-```
-
-### 问题: "yasm not found"
-
-**解决方案:**
-```bash
-brew install yasm
-```
-
-### 问题: pkg-config 找不到库
-
-**解决方案:**
-确保设置了 `PKG_CONFIG_PATH`：
-```bash
-export PKG_CONFIG_PATH="./ffmpeg_build/lib/pkgconfig:$PKG_CONFIG_PATH"
-```
-
-### 问题: 运行时找不到动态库（dyld: Library not loaded）
-
-**解决方案:**
-由于使用动态链接，需要设置 `DYLD_LIBRARY_PATH`：
-```bash
-export DYLD_LIBRARY_PATH="./ffmpeg_build/lib:$DYLD_LIBRARY_PATH"
-```
-
-或者使用 `install_name_tool` 修改库的安装路径（高级用法）。
-
-### 问题: 编译 x265 失败
-
-**解决方案:**
-x265 在 macOS 上需要使用 `build/macos` 而不是 `build/linux`：
-```bash
-cd x265_git/build/macos
-cmake -G "Unix Makefiles" \
-    -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD" \
-    -DENABLE_SHARED:bool=off \
-    ../../source
-```
-
-### 问题: 权限错误
-
-**解决方案:**
-确保有执行权限：
-```bash
-chmod +x build_mac.sh
-chmod +x configure
+# 验证编码器可用性
+ffmpeg -encoders | grep -E "264|265|aac|opus"
 ```
 
 ## 自定义配置
 
-你可以修改 `build_mac.sh` 中的 `./configure` 参数来启用或禁用特定功能：
+### 修改 FFmpeg 配置选项
 
-- 移除不需要的编码器：删除对应的 `--enable-lib*` 选项
-- 添加其他库：添加相应的 `--enable-lib*` 选项
-- 查看所有选项：`./configure --help`
+编辑 `scripts/libs/build_ffmpeg.sh`，修改 `./configure` 参数：
 
-## 参考
+```bash
+# 查看所有可用选项
+cd ffmpeg_sources/ffmpeg
+./configure --help
 
-- [FFmpeg 官方编译指南 (CentOS)](https://trac.ffmpeg.org/wiki/CompilationGuide/Centos)
+# 常用选项
+--enable-libxxx      # 启用特定库
+--disable-xxx        # 禁用特定功能
+--enable-static      # 编译静态库
+--enable-debug       # 启用调试
+```
+
+### 修改库的编译选项
+
+每个库的配置在 `scripts/libs/build_<libname>.sh` 中：
+
+```bash
+# 示例：修改 x264 配置
+vim scripts/libs/build_x264.sh
+
+# 在 configure 命令中添加/删除选项
+./configure \
+    --prefix="$ffmpeg_build" \
+    --enable-shared \
+    --enable-pic \
+    --bit-depth=10  # 添加 10-bit 支持
+```
+
+### 版本控制
+
+编辑 `config/versions.conf`：
+
+```bash
+# 使用稳定版
+BUILD_MODE="stable"
+X264_VERSION="stable"
+X265_VERSION="3.5"
+FFMPEG_VERSION="n6.0"
+
+# 或使用特定 commit
+X264_VERSION="a8b68ebfaa68621b5ac8907610d3335971839d52"
+```
+
+## 故障排除
+
+### 编译错误
+
+| 问题 | 解决方案 |
+|------|----------|
+| `nasm/yasm not found` | `brew install nasm yasm` |
+| `pkg-config not found` | `brew install pkg-config` |
+| `Library not loaded` | 设置 `DYLD_LIBRARY_PATH` |
+| CMake 错误 | `brew install cmake` |
+
+### 详细调试
+
+```bash
+# 单线程+详细输出
+./build_mac.sh -j 1 -v
+
+# 查看配置日志
+cat ffmpeg_sources/ffmpeg/ffbuild/config.log
+
+# 检查库是否正确安装
+ls -la ffmpeg_build/lib/*.dylib
+pkg-config --list-all | grep -E "264|265|aac"
+```
+
+### 运行时问题
+
+```bash
+# 检查动态库依赖
+otool -L ffmpeg_build/bin/ffmpeg
+
+# 修复库路径（如果需要）
+install_name_tool -change \
+    old_path \
+    new_path \
+    ffmpeg_build/bin/ffmpeg
+
+# 验证环境变量
+echo $PATH
+echo $DYLD_LIBRARY_PATH
+```
+
+### 清理和重建
+
+```bash
+# 清理构建产物（保留源码）
+./build_mac.sh -c build
+
+# 完全清理
+./build_mac.sh -c all
+
+# 或手动清理
+rm -rf ffmpeg_build ffmpeg_sources
+```
+
+## 包含的编码器和库
+
+### 视频编码
+- **H.264**: x264 (主要), openh264 (备用)
+- **H.265/HEVC**: x265 (主要), kvazaar (备用)
+- **VP8/VP9**: libvpx
+- **AV1**: libaom (编码), SVT-AV1 (快速编码), dav1d (解码)
+
+### 音频编码
+- **AAC**: fdk-aac (高质量)
+- **MP3**: lame
+- **Opus**: opus (现代编码)
+
+### 视频处理
+- **libplacebo**: GPU 加速的视频处理和色彩管理
+
+### 构建系统类型
+
+| 库 | 构建系统 | 特殊要求 |
+|---|---------|---------|
+| x264, x265 | Autotools/CMake | - |
+| fdk-aac, lame, opus | Autotools | 需要 autogen |
+| libvpx, libaom, svtav1 | CMake | install_name_tool 修复 |
+| dav1d, libplacebo | Meson | Ninja 构建 |
+| openh264 | Make | 直接 make |
+| ffmpeg | Autotools | 复杂配置 |
+
+## 许可证
+
+**重要**: 启用某些库会影响最终二进制文件的许可证：
+
+- `--enable-gpl`: GPL v2+ (x264, x265, kvazaar)
+- `--enable-nonfree`: 非自由软件 (fdk-aac)
+- `--enable-version3`: GPL v3+ / LGPL v3+
+
+确保你了解并接受相关许可证条款。
+
+## 技术参考
+
 - [FFmpeg 官方文档](https://ffmpeg.org/documentation.html)
-- [Homebrew 官网](https://brew.sh/)
+- [FFmpeg 编译指南](https://trac.ffmpeg.org/wiki/CompilationGuide)
+- [macOS 动态库机制](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/)
+- 基于 [CentOS 编译指南](https://trac.ffmpeg.org/wiki/CompilationGuide/Centos) 修改
 
-## 许可证说明
+---
 
-- FFmpeg: LGPL/GPL
-- libx264, libx265, Kvazaar: GPL
-- libfdk_aac: Fraunhofer FDK AAC License (非自由软件)
-- libmp3lame: LGPL
-- libopus: BSD
-- libvpx: BSD
-- libaom, SVT-AV1, dav1d: BSD
-- openh264: BSD
-
-使用 `--enable-nonfree` 和 `--enable-gpl` 选项意味着你接受相应的许可证条款。
-
+**提示**: 首次构建需要 15-25 分钟，增量构建仅需 5-10 分钟。使用 `-j 8` 可显著加速。

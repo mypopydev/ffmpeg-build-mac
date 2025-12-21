@@ -47,6 +47,10 @@ build_openh264() {
     log_info "Installing $LIB_NAME..."
     make install PREFIX="$ffmpeg_build"
 
+    # Fix install_name for macOS
+    # OpenH264 produces libopenh264.X.dylib
+    fix_dylib_id "$ffmpeg_build/lib" "libopenh264.*.dylib"
+
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$version"
     log_success "$LIB_NAME build completed"

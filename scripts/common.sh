@@ -369,6 +369,21 @@ debug_mode_changed() {
     return 1
 }
 
+# Fix dylib ID for macOS to ensure portable linking
+fix_dylib_id() {
+    local lib_dir="$1"
+    local lib_pattern="$2"
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local dylib_path=$(find "$lib_dir" -name "$lib_pattern" -type f | head -n 1)
+        if [ -n "$dylib_path" ]; then
+            log_info "Fixing install_name for $dylib_path"
+            local lib_name=$(basename "$dylib_path")
+            install_name_tool -id "$lib_dir/$lib_name" "$dylib_path" || log_warning "Failed to fix dylib ID for $lib_name"
+        fi
+    fi
+}
+
 # Export all functions
 export -f log_info log_success log_warning log_error log_step
 export -f get_project_root load_versions needs_rebuild mark_built
@@ -378,3 +393,4 @@ export -f get_build_marker is_force_rebuild
 export -f get_dependencies check_dependencies clean_library
 export -f setup_error_handling error_handler show_progress
 export -f is_debug_enabled get_debug_flags get_release_flags debug_mode_changed
+export -f fix_dylib_id

@@ -31,13 +31,19 @@ DEBUG_FLAGS="-g -O0"
 BUILD_MODE=""
 SCRIPT_VERSION="2.0.0"
 
+# Load library info
+if [ -n "$SCRIPT_DIR" ]; then
+    source "$SCRIPT_DIR/scripts/library_info.sh"
+else
+    # Fallback if SCRIPT_DIR is not set (e.g. testing)
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$DIR/library_info.sh"
+fi
+
 # ============= Supported Libraries =============
 
-SUPPORTED_LIBS=(
-    "x264" "x265" "fdk-aac" "lame" "opus"
-    "libvpx" "libaom" "openh264" "kvazaar"
-    "svtav1" "dav1d" "libplacebo" "ffmpeg"
-)
+# Get supported libraries from library_info.sh
+SUPPORTED_LIBS=("$(get_all_libraries)" "ffmpeg")
 
 # ============= Configuration Initialization =============
 
@@ -49,6 +55,12 @@ init_config() {
     FFMPEG_SOURCES="$script_dir/ffmpeg_sources"
     FFMPEG_BUILD="$script_dir/ffmpeg_build"
     BIN_DIR="$FFMPEG_BUILD/bin"
+
+    # Load build options
+    local build_conf="$script_dir/config/build_options.conf"
+    if [ -f "$build_conf" ]; then
+        source "$build_conf"
+    fi
 
     # Get version from VERSION file if it exists
     local version_file="$script_dir/VERSION"

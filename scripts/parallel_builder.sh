@@ -9,27 +9,8 @@ set -e
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS_DIR/common.sh"
 
-# Define build groups (libraries that can be built in parallel)
 # Group 1: No dependencies - all audio/video codecs and processing libraries without interdependencies
-declare -a GROUP_1=(
-    "x264"
-    "x265"
-    "fdk-aac"
-    "lame"
-    "opus"
-    "libvpx"
-    "libaom"
-    "openh264"
-    "kvazaar"
-    "svtav1"
-    "dav1d"
-    "libplacebo"
-)
-
-# Group 2: FFmpeg (depends on all libraries in Group 1)
-declare -a GROUP_2=(
-    "ffmpeg"
-)
+# Note: These are now managed via config/build_options.conf and library_info.sh
 
 # Normalize library name (convert hyphens to underscores for script/function names)
 normalize_lib_name() {
@@ -63,6 +44,11 @@ build_group_parallel() {
     local ffmpeg_sources="$FFMPEG_SOURCES"
     local ffmpeg_build="$FFMPEG_BUILD"
     local max_parallel="${MAX_PARALLEL_JOBS:-4}"
+
+    if [ ${#libs[@]} -eq 0 ]; then
+        log_info "$group_name: No libraries to build"
+        return 0
+    fi
 
     log_step "Building $group_name (up to $max_parallel jobs in parallel)"
 
@@ -134,6 +120,10 @@ build_group_sequential() {
     local ffmpeg_sources="$FFMPEG_SOURCES"
     local ffmpeg_build="$FFMPEG_BUILD"
 
+    if [ ${#libs[@]} -eq 0 ]; then
+        return 0
+    fi
+
     log_step "Building $group_name (sequential)"
 
     for lib in "${libs[@]}"; do
@@ -159,18 +149,70 @@ parallel_build_all() {
     log_info "Parallel build mode: $parallel_mode"
     log_info "Max parallel jobs: ${MAX_PARALLEL_JOBS:-4}"
 
-    # Build Group 1 (independent libraries)
-    if [ "$parallel_mode" = "true" ]; then
-        build_group_parallel "Group 1: Independent Libraries" "${GROUP_1[@]}" || return 1
-    else
-        build_group_sequential "Group 1: Independent Libraries" "${GROUP_1[@]}" || return 1
+    # Determine which libraries to build from ENABLED_LIBRARIES
+    # If ENABLED_LIBRARIES is empty, use defaults from library_info.sh
+    if [ ${#ENABLED_LIBRARIES[@]} -eq 0 ]; then
+        ENABLED_LIBRARIES=($(get_all_libraries) "ffmpeg")
     fi
 
-    # Build Group 2 (FFmpeg - depends on Group 1)
-    # FFmpeg always builds sequentially as it's a single library
-    build_group_sequential "Group 2: FFmpeg" "${GROUP_2[@]}" || return 1
+    local group_1_libs=()
+    local build_ffmpeg=false
+
+    for lib in "${ENABLED_LIBRARIES[@]}"; do
+        if [ "$lib" = "ffmpeg" ]; then
+            build_ffmpeg=true
+        else
+            group_1_libs+=("$lib")
+        fi
+    done
+
+    # Build Group 1 (independent libraries)
+    if [ "$parallel_mode" = "true" ]; then
+        build_group_parallel "Group 1: Independent Libraries" "${group_1_libs[@]}" || return 1
+    else
+        build_group_sequential "Group 1: Independent Libraries" "${group_1_libs[@]}" || return 1
+    fi
+
+    # Build Group 2 (FFmpeg)
+    if [ "$build_ffmpeg" = "true" ]; then
+        build_group_sequential "Group 2: FFmpeg" "ffmpeg" || return 1
+    fi
 
     return 0
+}
+
+# Resolve dependencies for a list of libraries
+# Returns a unique list of libraries including dependencies, topologically sorted (simple implementation)
+resolve_dependencies() {
+    local libs=("$@")
+    local resolved_libs=()
+    local seen_libs=()
+    
+    # Simple dependency resolution
+    # If ffmpeg is in the list, add all enabled group 1 libs first
+    local has_ffmpeg=false
+    for lib in "${libs[@]}"; do
+        if [ "$lib" = "ffmpeg" ]; then
+            has_ffmpeg=true
+            break
+        fi
+    done
+
+    if [ "$has_ffmpeg" = "true" ]; then
+        # Add all enabled Group 1 libs
+        # We use ENABLED_LIBRARIES (minus ffmpeg) as deps for ffmpeg
+        for lib in "${ENABLED_LIBRARIES[@]}"; do
+            if [ "$lib" != "ffmpeg" ]; then
+                resolved_libs+=("$lib")
+            fi
+        done
+        resolved_libs+=("ffmpeg")
+    else
+        # No complex dependencies for other libs currently
+        resolved_libs=("${libs[@]}")
+    fi
+
+    echo "${resolved_libs[@]}"
 }
 
 # Build specific libraries
@@ -183,9 +225,39 @@ build_specific_libraries() {
     export FFMPEG_SOURCES="$ffmpeg_sources"
     export FFMPEG_BUILD="$ffmpeg_build"
 
-    log_info "Building specific libraries: ${libs[*]}"
+    # Resolve dependencies
+    # Note: simple resolution: if building ffmpeg, build all enabled deps first
+    local libs_to_build=()
+    if [[ " ${libs[*]} " =~ " ffmpeg " ]]; then
+         # If ffmpeg is requested, we assume we want to build its enabled dependencies too
+         # to ensure it links correctly.
+         log_info "Resolving dependencies for FFmpeg..."
+         
+         # Get all enabled non-ffmpeg libs
+         for lib in "${ENABLED_LIBRARIES[@]}"; do
+             if [ "$lib" != "ffmpeg" ]; then
+                 libs_to_build+=("$lib")
+             fi
+         done
+         libs_to_build+=("ffmpeg")
+         
+         # Filter to keep only what was requested? 
+         # No, the goal is "Enhance dependency management". 
+         # If I say "build ffmpeg", I expect it to work, so I need deps.
+         # But if I say "build x264", I only build x264.
+         # The current logic builds ALL enabled libs if ffmpeg is requested.
+         # This might be too aggressive if I just want to relink ffmpeg?
+         # But "build_mac.sh -l ffmpeg" usually means "I want to rebuild ffmpeg".
+         # The incremental build system will skip deps if they are already built.
+         # So safe to add them.
+    else
+        libs_to_build=("${libs[@]}")
+    fi
 
-    for lib in "${libs[@]}"; do
+    log_info "Building libraries: ${libs_to_build[*]}"
+
+    # Use sequential build for specific libs to be safe and simple
+    for lib in "${libs_to_build[@]}"; do
         build_library "$lib" "$ffmpeg_sources" "$ffmpeg_build" || {
             log_error "Build failed for $lib"
             return 1

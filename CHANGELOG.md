@@ -2,6 +2,16 @@
 
 本文档记录项目的所有重要变更。
 
+## [2.1.0] - 2025-12-21
+
+### 修复
+- 🐛 修复 OpenH264 构建失败问题 (解决 `0rm` / `0sh` 错误)
+- 🐛 解决环境变量 `QUIET`/`VERBOSE` 与 OpenH264 Makefile 变量冲突的问题
+- 🐛 修复 `scripts/config.sh` 中 `SUPPORTED_LIBS` 数组展开逻辑错误
+
+### 改进
+- 🔧 将脚本内部环境变量重命名为 `SCRIPT_QUIET`/`SCRIPT_VERBOSE` 以提高兼容性
+
 ## [2.0.0] - 2024-XX-XX
 
 ### 新增功能

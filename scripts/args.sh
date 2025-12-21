@@ -131,12 +131,12 @@ parse_arguments() {
                 shift
                 ;;
             -v|--verbose)
-                VERBOSE=1
+                SCRIPT_VERBOSE=1
                 LOG_LEVEL="verbose"
                 shift
                 ;;
             -q|--quiet)
-                QUIET=1
+                SCRIPT_QUIET=1
                 LOG_LEVEL="quiet"
                 shift
                 ;;

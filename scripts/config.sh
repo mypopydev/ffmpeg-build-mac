@@ -43,7 +43,7 @@ fi
 # ============= Supported Libraries =============
 
 # Get supported libraries from library_info.sh
-SUPPORTED_LIBS=("$(get_all_libraries)" "ffmpeg")
+SUPPORTED_LIBS=($(get_all_libraries) "ffmpeg")
 
 # ============= Configuration Initialization =============
 
@@ -145,8 +145,8 @@ export_config() {
     # Export logging options
     export LOG_FILE
     export LOG_LEVEL
-    export VERBOSE
-    export QUIET
+    export SCRIPT_VERBOSE
+    export SCRIPT_QUIET
 }
 
 # ============= Configuration Display =============

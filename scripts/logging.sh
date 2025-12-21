@@ -7,8 +7,8 @@
 
 LOG_FILE=""
 LOG_LEVEL="normal"  # quiet, normal, verbose
-VERBOSE=0
-QUIET=0
+SCRIPT_VERBOSE=0
+SCRIPT_QUIET=0
 
 # ============= Logging Initialization =============
 
@@ -79,7 +79,7 @@ log_with_file() {
                 echo -e "${CYAN}[STEP]${NC} $message" | tee -a "$LOG_FILE"
                 ;;
             verbose)
-                if [ "$LOG_LEVEL" = "verbose" ] || [ "$VERBOSE" = "1" ]; then
+                if [ "$LOG_LEVEL" = "verbose" ] || [ "$SCRIPT_VERBOSE" = "1" ]; then
                     echo -e "${MAGENTA}[VERBOSE]${NC} $message" | tee -a "$LOG_FILE"
                 else
                     echo "[VERBOSE] $message" >> "$LOG_FILE"
@@ -130,7 +130,7 @@ log_verbose() {
 
 # Log command execution
 log_command() {
-    if [ "$VERBOSE" = "1" ] || [ "$LOG_LEVEL" = "verbose" ]; then
+    if [ "$SCRIPT_VERBOSE" = "1" ] || [ "$LOG_LEVEL" = "verbose" ]; then
         log_verbose "执行命令: $*"
     fi
     if [ -n "$LOG_FILE" ]; then

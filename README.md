@@ -40,6 +40,8 @@ ffmpeg -version
 | 🚀 **增量构建** | 只重编译修改过的库 | ❌ | ✅ |
 | ⚡ **并行编译** | 多核并行加速 | ❌ | ✅ 最高4倍提速 |
 | 📦 **版本管理** | 稳定版/开发版切换 | ❌ | ✅ |
+| 🔧 **配置驱动** | 简单配置文件管理库开关 | ❌ | ✅ |
+| 🧠 **智能依赖** | 自动解析构建依赖关系 | ❌ | ✅ |
 | 🔧 **Debug支持** | 包含调试符号 | ❌ | ✅ 所有13个库 |
 | 🧩 **模块化** | 独立库脚本 | ❌ | ✅ |
 
@@ -65,8 +67,8 @@ ffmpeg -version
 # 自定义并行数
 ./build_mac.sh -j 8
 
-# 只构建特定库
-./build_mac.sh -l x264 -l x265
+# 只构建特定库（会自动构建其依赖）
+./build_mac.sh -l ffmpeg
 
 # 强制重新编译
 ./build_mac.sh -f
@@ -88,7 +90,26 @@ source ./env_setup.sh -p
 ./env_setup.sh --show
 ```
 
-### 版本控制
+### 配置管理
+
+**1. 选择要构建的库**
+
+编辑 `config/build_options.conf` 启用或禁用特定库：
+
+```bash
+# 启用库
+ENABLED_LIBRARIES=(
+    "x264"
+    "x265"
+    # "fdk-aac"  # 注释掉以禁用
+    "ffmpeg"
+)
+
+# 添加自定义 FFmpeg 标志
+EXTRA_FFMPEG_FLAGS="--enable-libfreetype"
+```
+
+**2. 切换版本**
 
 编辑 `config/versions.conf` 切换版本：
 

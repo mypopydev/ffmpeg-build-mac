@@ -187,25 +187,37 @@ ffmpeg -encoders | grep -E "264|265|aac|opus"
 
 ## 自定义配置
 
-### 修改 FFmpeg 配置选项
+### 1. 启用/禁用库 (推荐)
 
-编辑 `scripts/libs/build_ffmpeg.sh`，修改 `./configure` 参数：
+使用 `config/build_options.conf` 控制要构建的库：
 
 ```bash
-# 查看所有可用选项
-cd ffmpeg_sources/ffmpeg
-./configure --help
+# 编辑配置文件
+vim config/build_options.conf
 
-# 常用选项
---enable-libxxx      # 启用特定库
---disable-xxx        # 禁用特定功能
---enable-static      # 编译静态库
---enable-debug       # 启用调试
+# 示例：只构建核心视频编码器
+ENABLED_LIBRARIES=(
+    "x264"
+    "x265"
+    "libvpx"
+    "ffmpeg"
+)
 ```
 
-### 修改库的编译选项
+脚本会自动生成对应的 `./configure` 参数（如 `--enable-libx264`）。
 
-每个库的配置在 `scripts/libs/build_<libname>.sh` 中：
+### 2. 添加 FFmpeg 编译选项
+
+同样在 `config/build_options.conf` 中配置：
+
+```bash
+# 添加额外的 configure 标志
+EXTRA_FFMPEG_FLAGS="--enable-libfreetype --disable-network"
+```
+
+### 3. 修改库的编译选项 (高级)
+
+如果需要修改某个依赖库（如 x264）的具体编译参数，则需要编辑对应的脚本 `scripts/libs/build_<libname>.sh`：
 
 ```bash
 # 示例：修改 x264 配置
@@ -219,7 +231,7 @@ vim scripts/libs/build_x264.sh
     --bit-depth=10  # 添加 10-bit 支持
 ```
 
-### 版本控制
+### 4. 版本控制
 
 编辑 `config/versions.conf`：
 

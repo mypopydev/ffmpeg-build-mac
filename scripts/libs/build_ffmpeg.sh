@@ -68,12 +68,13 @@ build_ffmpeg() {
     log_info "Configuring FFmpeg..."
     log_info "Enabled libraries: ${ENABLED_LIBRARIES[*]}"
 
-    # Isolate pkg-config to only use build directory - FUNDAMENTAL FIX
+    # Isolate pkg-config to use build directory first, but allow system fallbacks
+    # We do NOT set PKG_CONFIG_LIBDIR to empty, as that would disable system default search paths
+    # which are needed for dependencies like shaderc, vulkan, lcms2 (used by libplacebo)
     export PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig"
-    export PKG_CONFIG_LIBDIR=""
-    log_info "Using isolated pkg-config path: $PKG_CONFIG_PATH"
+    log_info "Using pkg-config path: $PKG_CONFIG_PATH (plus system defaults)"
 
-    PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" ./configure \
+    ./configure \
         --prefix="$ffmpeg_build" \
         --extra-cflags="$extra_cflags" \
         --extra-ldflags="$extra_ldflags" \
@@ -84,13 +85,13 @@ build_ffmpeg() {
         --enable-gpl \
         --enable-nonfree \
         --enable-version3 \
-        $lib_flags
+        $lib_flags || { log_error "FFmpeg configure failed"; exit 1; }
 
     log_info "Compiling FFmpeg..."
-    run_make
+    run_make || { log_error "FFmpeg make failed"; exit 1; }
 
     log_info "Installing FFmpeg..."
-    make install
+    make install || { log_error "FFmpeg install failed"; exit 1; }
 
     # FUNDAMENTAL FIX: Correct all library install names to ensure proper linking
     log_info "Fixing library install names..."

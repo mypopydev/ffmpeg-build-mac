@@ -5,9 +5,13 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/config.sh"
+LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Set SCRIPT_DIR only if not already set or invalid
+if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/build_mac.sh" ]; then
+    SCRIPT_DIR="$(dirname "$LOCAL_DIR")"
+fi
+source "$LOCAL_DIR/common.sh"
+source "$LOCAL_DIR/config.sh"
 
 validate_build() {
     local ffmpeg_build="$1"

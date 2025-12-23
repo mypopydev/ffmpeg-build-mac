@@ -44,3 +44,5 @@ test_*.avi
 .zshrc.backup*
 .bashrc.backup*
 .bash_profile.backup*
+test.jxl
+test.mp3

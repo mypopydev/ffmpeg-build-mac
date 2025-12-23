@@ -2,7 +2,13 @@
 
 本文档记录项目的所有重要变更。
 
-## [2.1.0] - 2025-12-21
+## [2.1.0] - 2025-12-23
+
+### 新增功能
+- ✨ **libjxl 支持**：添加 JPEG XL 图像格式支持（编码器和解码器）
+- ✨ 新增 `scripts/libs/build_libjxl.sh` 构建脚本
+- ✨ 新增 `test_libjxl_integration.sh` 集成测试脚本
+- ✨ 更新 `LIBJXL_INTEGRATION_SUMMARY.md` 详细说明文档
 
 ### 修复
 - 🐛 修复 OpenH264 构建失败问题 (解决 `0rm` / `0sh` 错误)
@@ -11,6 +17,8 @@
 
 ### 改进
 - 🔧 将脚本内部环境变量重命名为 `SCRIPT_QUIET`/`SCRIPT_VERBOSE` 以提高兼容性
+- 🔧 更新验证脚本 `validate.sh` 支持 libjxl 仓库检查
+- 🔧 更新所有文档以反映新增的 libjxl 支持
 
 ## [2.0.0] - 2024-XX-XX
 

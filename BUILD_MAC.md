@@ -308,6 +308,8 @@ rm -rf ffmpeg_build ffmpeg_sources
 - **H.265/HEVC**: x265 (主要), kvazaar (备用)
 - **VP8/VP9**: libvpx
 - **AV1**: libaom (编码), SVT-AV1 (快速编码), dav1d (解码)
+- **VVC/H.266**: vvenc (新一代视频编码)
+- **图像格式**: libjxl (JPEG XL - 新一代图像格式)
 
 ### 音频编码
 - **AAC**: fdk-aac (高质量)
@@ -326,6 +328,7 @@ rm -rf ffmpeg_build ffmpeg_sources
 | libvpx, libaom, svtav1 | CMake | install_name_tool 修复 |
 | dav1d, libplacebo | Meson | Ninja 构建 |
 | openh264 | Make | 直接 make |
+| libjxl | CMake | 需要 submodule |
 | ffmpeg | Autotools | 复杂配置 |
 
 ## 许可证

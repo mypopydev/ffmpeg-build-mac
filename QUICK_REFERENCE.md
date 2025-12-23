@@ -143,6 +143,8 @@ OPUS_VERSION="v1.4"
 - `dav1d` - AV1 解码器
 - `openh264` - OpenH264 编码器
 - `kvazaar` - Kvazaar HEVC 编码器
+- `vvenc` - VVC/H.266 编码器
+- `libjxl` - JPEG XL 图像格式编码器/解码器
 
 ### 音频编码器
 

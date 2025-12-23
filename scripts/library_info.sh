@@ -20,6 +20,7 @@ get_lib_config_flag() {
         "svtav1")     echo "--enable-libsvtav1" ;;
         "dav1d")      echo "--enable-libdav1d" ;;
         "libplacebo") echo "--enable-libplacebo" ;;
+        "libjxl")     echo "--enable-libjxl" ;;
         "freetype")   echo "--enable-libfreetype" ;;
         "vvenc")      echo "--enable-libvvenc" ;;
         *)            echo "" ;;
@@ -41,6 +42,7 @@ declare -a GROUP_1_LIBS=(
     "svtav1"
     "dav1d"
     "libplacebo"
+    "libjxl"
     "vvenc"
 )
 

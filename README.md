@@ -133,6 +133,7 @@ VVENC_VERSION="v1.10.0"  # VVC编码器版本
 - **VP8/VP9**: libvpx
 - **AV1**: libaom, SVT-AV1, dav1d (解码)
 - **VVC/H.266**: vvenc
+- **图像格式**: libjxl (JPEG XL)
 
 ### 音频编码器
 - **AAC**: fdk-aac

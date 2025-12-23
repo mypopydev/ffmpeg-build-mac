@@ -109,6 +109,7 @@ GIT_REPOS=(
     "https://github.com/ultravideo/kvazaar.git"
     "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
     "https://code.videolan.org/videolan/dav1d.git"
+    "https://github.com/libjxl/libjxl.git"
 )
 
 REPO_COUNT=0

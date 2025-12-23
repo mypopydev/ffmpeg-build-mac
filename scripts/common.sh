@@ -115,46 +115,48 @@ git_clone_or_update() {
     local max_retries=3
     local retry_count=0
 
-    if [ ! -d "$target_dir" ]; then
-        log_info "Cloning $repo_url..."
-        while [ $retry_count -lt $max_retries ]; do
-            if git clone "$repo_url" "$target_dir"; then
-                log_success "Clone successful"
-                break
-            else
-                retry_count=$((retry_count + 1))
-                if [ $retry_count -lt $max_retries ]; then
-                    log_warning "Clone failed, retrying ($retry_count/$max_retries)..."
-                    sleep 2
+    (
+        if [ ! -d "$target_dir" ]; then
+            log_info "Cloning $repo_url..."
+            while [ $retry_count -lt $max_retries ]; do
+                if git clone "$repo_url" "$target_dir"; then
+                    log_success "Clone successful"
+                    break
                 else
-                    log_error "Clone failed after $max_retries attempts"
-                    return 1
+                    retry_count=$((retry_count + 1))
+                    if [ $retry_count -lt $max_retries ]; then
+                        log_warning "Clone failed, retrying ($retry_count/$max_retries)..."
+                        sleep 2
+                    else
+                        log_error "Clone failed after $max_retries attempts"
+                        return 1
+                    fi
                 fi
-            fi
-        done
-    else
-        log_info "Repository exists, updating..."
-        cd "$target_dir"
-        git fetch --all || log_warning "Fetch failed, continuing with existing version"
-    fi
-
-    # Checkout specific version if not "latest"
-    if [ "$version" != "latest" ]; then
-        cd "$target_dir"
-        log_info "Checking out version: $version"
-        git checkout "$version" || {
-            log_error "Failed to checkout $version"
-            return 1
-        }
-    else
-        cd "$target_dir"
-        # Get the default branch name
-        local default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
-        if [ -n "$default_branch" ]; then
-            git checkout "$default_branch" 2>/dev/null || git checkout master 2>/dev/null || git checkout main 2>/dev/null
-            git pull 2>/dev/null || log_warning "Pull failed, using existing version"
+            done
+        else
+            log_info "Repository exists, updating..."
+            cd "$target_dir"
+            git fetch --all || log_warning "Fetch failed, continuing with existing version"
         fi
-    fi
+
+        # Checkout specific version if not "latest"
+        if [ "$version" != "latest" ]; then
+            cd "$target_dir"
+            log_info "Checking out version: $version"
+            git checkout "$version" || {
+                log_error "Failed to checkout $version"
+                return 1
+            }
+        else
+            cd "$target_dir"
+            # Get the default branch name
+            local default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+            if [ -n "$default_branch" ]; then
+                git checkout "$default_branch" 2>/dev/null || git checkout master 2>/dev/null || git checkout main 2>/dev/null
+                git pull 2>/dev/null || log_warning "Pull failed, using existing version"
+            fi
+        fi
+    )
 
     return 0
 }

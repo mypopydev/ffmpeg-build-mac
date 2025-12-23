@@ -21,6 +21,7 @@ get_lib_config_flag() {
         "dav1d")      echo "--enable-libdav1d" ;;
         "libplacebo") echo "--enable-libplacebo" ;;
         "freetype")   echo "--enable-libfreetype" ;;
+        "vvenc")      echo "--enable-libvvenc" ;;
         *)            echo "" ;;
     esac
 }
@@ -40,6 +41,7 @@ declare -a GROUP_1_LIBS=(
     "svtav1"
     "dav1d"
     "libplacebo"
+    "vvenc"
 )
 
 # Helper function to get all available libraries

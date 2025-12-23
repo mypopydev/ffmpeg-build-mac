@@ -101,6 +101,7 @@ source ./env_setup.sh -p
 ENABLED_LIBRARIES=(
     "x264"
     "x265"
+    "vvenc"     # VVC/H.266编码器
     # "fdk-aac"  # 注释掉以禁用
     "ffmpeg"
 )
@@ -121,6 +122,7 @@ BUILD_MODE="latest"
 BUILD_MODE="stable"
 X264_VERSION="stable"
 X265_VERSION="3.5"
+VVENC_VERSION="v1.10.0"  # VVC编码器版本
 ```
 
 ## 包含的库
@@ -130,6 +132,7 @@ X265_VERSION="3.5"
 - **H.265/HEVC**: x265, kvazaar
 - **VP8/VP9**: libvpx
 - **AV1**: libaom, SVT-AV1, dav1d (解码)
+- **VVC/H.266**: vvenc
 
 ### 音频编码器
 - **AAC**: fdk-aac
@@ -153,6 +156,22 @@ X265_VERSION="3.5"
 # 使用lldb调试
 source ./env_setup.sh -t
 lldb ./ffmpeg_build/bin/ffmpeg
+```
+
+### 动态库构建
+
+vvenc库支持动态库构建（.dylib），默认同时生成静态和动态库：
+
+```bash
+# 查看动态库信息
+file ffmpeg_build/lib/libvvenc.dylib
+
+# 检查依赖关系
+otool -L ffmpeg_build/lib/libvvenc.dylib
+
+# 使用动态库（环境已自动设置）
+source ./env_setup.sh -t
+ffmpeg -h encoder=libvvenc
 ```
 
 ### 日志管理
@@ -258,6 +277,18 @@ FFMPEG_VERSION="n6.0"
 1. 在 `scripts/libs/` 创建 `build_newlib.sh`
 2. 在 `scripts/parallel_builder.sh` 中添加到 GROUP_1
 3. 在 `config/versions.conf` 中添加版本配置
+</details>
+
+<details>
+<summary><b>vvenc库支持哪些功能？</b></summary>
+
+- ✅ VVC/H.266编码支持
+- ✅ 动态库构建（.dylib）
+- ✅ 静态库构建（.a）
+- ✅ 版本化符号链接管理
+- ✅ 与FFmpeg无缝集成
+
+vvenc是Fraunhofer开发的VVC标准参考实现，支持最新的H.266视频编码标准。
 </details>
 
 ## 许可证

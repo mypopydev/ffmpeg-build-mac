@@ -11,6 +11,56 @@ MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# ============= Environment Control =============
+
+# Sanitize build environment
+sanitize_environment() {
+    log_info "Sanitizing build environment..."
+
+    # 1. Reset PATH to system defaults + Homebrew
+    # Detect Homebrew prefix
+    local brew_prefix=""
+    if command -v brew &> /dev/null; then
+        brew_prefix=$(brew --prefix)/bin
+    elif [ -d "/opt/homebrew/bin" ]; then
+        brew_prefix="/opt/homebrew/bin"
+    elif [ -d "/usr/local/bin" ]; then
+        brew_prefix="/usr/local/bin"
+    fi
+
+    # Construct safe PATH
+    # Priority: Homebrew (for tools) > System
+    local safe_path="/usr/bin:/bin:/usr/sbin:/sbin"
+    if [ -n "$brew_prefix" ]; then
+        safe_path="$brew_prefix:$safe_path"
+    fi
+    
+    export PATH="$safe_path"
+    log_info "Reset PATH to: $PATH"
+
+    # 2. Unset user build flags to prevent pollution
+    local vars_to_unset=(
+        "CFLAGS" "CXXFLAGS" "LDFLAGS" "CPPFLAGS"
+        "PKG_CONFIG_PATH" "PKG_CONFIG_LIBDIR"
+        "LD_LIBRARY_PATH" "DYLD_LIBRARY_PATH" "DYLD_FALLBACK_LIBRARY_PATH"
+        "LIBRARY_PATH" "C_INCLUDE_PATH" "CPLUS_INCLUDE_PATH"
+        "ACLOCAL_PATH"
+    )
+
+    for var in "${vars_to_unset[@]}"; do
+        if [ -n "${!var}" ]; then
+            log_warning "Unsetting user environment variable: $var (was: ${!var})"
+            unset "$var"
+        fi
+    done
+
+    # 3. Set standard locale to prevent parsing issues
+    export LC_ALL=C
+    export LANG=C
+
+    log_success "Environment sanitized"
+}
+
 # ============= Logging Functions =============
 
 log_info() {

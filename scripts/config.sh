@@ -112,12 +112,12 @@ validate_clean_mode() {
     local mode="$1"
 
     case "$mode" in
-        all|build|sources)
+        all|build|sources|logs)
             return 0
             ;;
         *)
             log_error "未知的清理模式: $mode"
-            log_info "支持的模式: all, build, sources"
+            log_info "支持的模式: all, build, sources, logs"
             return 1
             ;;
     esac

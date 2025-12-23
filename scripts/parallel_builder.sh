@@ -25,11 +25,44 @@ build_library() {
     local normalized_name=$(normalize_lib_name "$lib_name")
     local lib_script="$SCRIPTS_DIR/libs/build_${normalized_name}.sh"
 
+    # Setup isolated logging
+    local logs_dir="$ffmpeg_build/build_logs"
+    mkdir -p "$logs_dir"
+    local log_file="$logs_dir/${normalized_name}.log"
+
     if [ -f "$lib_script" ]; then
-        log_info "Building $lib_name..."
-        source "$lib_script"
-        build_${normalized_name} "$ffmpeg_sources" "$ffmpeg_build"
-        return $?
+        # We write to a separate log file to keep the main output clean
+        # but we need to notify the user about the log file location
+        # Since this runs in a subshell or piped context in parallel_build,
+        # we echo to stdout which is captured by the caller.
+        
+        # Initialize log file
+        echo "=== Building $lib_name ===" > "$log_file"
+        echo "Date: $(date)" >> "$log_file"
+        echo "Script: $lib_script" >> "$log_file"
+        echo "==========================" >> "$log_file"
+
+        # Run the build in a subshell to capture all output
+        (
+            set -e
+            source "$lib_script"
+            # Execute the build function
+            build_${normalized_name} "$ffmpeg_sources" "$ffmpeg_build"
+        ) >> "$log_file" 2>&1
+        
+        local exit_code=$?
+
+        if [ $exit_code -eq 0 ]; then
+            echo "=== Build Successful ===" >> "$log_file"
+            return 0
+        else
+            echo "=== Build Failed (Exit Code: $exit_code) ===" >> "$log_file"
+            # Print error to stdout so it shows up in main log
+            echo "Build failed for $lib_name. Log: $log_file"
+            echo "Last 20 lines of log:"
+            tail -n 20 "$log_file"
+            return $exit_code
+        fi
     else
         log_error "Build script not found: $lib_script"
         return 1
@@ -78,12 +111,7 @@ build_group_parallel() {
         done
 
         # Start new job
-        (
-            build_library "$lib" "$ffmpeg_sources" "$ffmpeg_build" 2>&1 | \
-            while IFS= read -r line; do
-                echo "[$lib] $line"
-            done
-        ) &
+        build_library "$lib" "$ffmpeg_sources" "$ffmpeg_build" &
 
         local pid=$!
         pids+=("$pid")

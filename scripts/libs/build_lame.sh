@@ -66,6 +66,12 @@ build_lame() {
     log_info "Installing $LIB_NAME..."
     make install
 
+    # Fix library install name to prevent linking conflicts
+    if [ -f "$ffmpeg_build/lib/libmp3lame.dylib" ]; then
+        install_name_tool -id "$ffmpeg_build/lib/libmp3lame.0.dylib" "$ffmpeg_build/lib/libmp3lame.dylib"
+        log_info "Fixed libmp3lame install name ID"
+    fi
+
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$version"
     log_success "$LIB_NAME build completed"

@@ -68,6 +68,11 @@ build_ffmpeg() {
     log_info "Configuring FFmpeg..."
     log_info "Enabled libraries: ${ENABLED_LIBRARIES[*]}"
 
+    # Isolate pkg-config to only use build directory - FUNDAMENTAL FIX
+    export PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig"
+    export PKG_CONFIG_LIBDIR=""
+    log_info "Using isolated pkg-config path: $PKG_CONFIG_PATH"
+
     PKG_CONFIG_PATH="$ffmpeg_build/lib/pkgconfig" ./configure \
         --prefix="$ffmpeg_build" \
         --extra-cflags="$extra_cflags" \
@@ -86,6 +91,37 @@ build_ffmpeg() {
 
     log_info "Installing FFmpeg..."
     make install
+
+    # FUNDAMENTAL FIX: Correct all library install names to ensure proper linking
+    log_info "Fixing library install names..."
+    
+    # Fix ffmpeg binary RPATH for local library loading
+    install_name_tool -add_rpath "$ffmpeg_build/lib" "$ffmpeg_build/bin/ffmpeg" 2>/dev/null || log_warning "Failed to add RPATH to ffmpeg binary"
+    
+    # Fix any incorrect libmp3lame references in all built libraries
+    for dylib in "$ffmpeg_build/lib/"*.dylib; do
+        if [ -f "$dylib" ]; then
+            # Fix libmp3lame references pointing to /usr/local/lib
+            if otool -L "$dylib" 2>/dev/null | grep -q "/usr/local/lib/libmp3lame"; then
+                install_name_tool -change /usr/local/lib/libmp3lame.0.dylib \
+                    "$ffmpeg_build/lib/libmp3lame.0.dylib" "$dylib" 2>/dev/null || true
+                log_info "Fixed libmp3lame reference in $(basename "$dylib")"
+            fi
+            
+            # Fix libjxl references if they point to system paths
+            if otool -L "$dylib" 2>/dev/null | grep -q "/opt/homebrew"; then
+                # Convert system libjxl references to @rpath format
+                otool -L "$dylib" 2>/dev/null | grep "/opt/homebrew.*libjxl" | while read line; do
+                    system_lib=$(echo "$line" | awk '{print $1}')
+                    lib_name=$(basename "$system_lib")
+                    if [ -f "$ffmpeg_build/lib/$lib_name" ]; then
+                        install_name_tool -change "$system_lib" "@rpath/$lib_name" "$dylib" 2>/dev/null || true
+                        log_info "Fixed $lib_name reference in $(basename "$dylib")"
+                    fi
+                done
+            fi
+        fi
+    done
 
     # Mark as built
     mark_built "$LIB_NAME" "$build_marker" "$(git describe --tags --always 2>/dev/null || echo 'unknown')"

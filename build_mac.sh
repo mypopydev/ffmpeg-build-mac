@@ -22,6 +22,7 @@ source "$SCRIPT_DIR/scripts/config.sh"
 source "$SCRIPT_DIR/scripts/logging.sh"
 source "$SCRIPT_DIR/scripts/args.sh"
 source "$SCRIPT_DIR/scripts/parallel_builder.sh"
+source "$SCRIPT_DIR/scripts/validate_build.sh"
 
 # ============= Banner Display =============
 
@@ -110,7 +111,7 @@ perform_clean() {
 
     case "$mode" in
         all)
-            log_warning "清理所有构建产物和源码..."
+            log_warning "清理所有构建产物、源码和日志..."
             rm -rf "$FFMPEG_BUILD" "$FFMPEG_SOURCES"
             log_success "清理完成"
             ;;
@@ -122,6 +123,11 @@ perform_clean() {
         sources)
             log_warning "清理源码..."
             rm -rf "$FFMPEG_SOURCES"
+            log_success "清理完成"
+            ;;
+        logs)
+            log_warning "清理构建日志..."
+            rm -rf "$FFMPEG_BUILD/build_logs"
             log_success "清理完成"
             ;;
     esac
@@ -174,6 +180,9 @@ main() {
     # Initialize configuration
     init_config "$SCRIPT_DIR"
 
+    # Sanitize environment (Suggestion #2: Strict Build Environment Isolation)
+    sanitize_environment
+
     # Parse command line arguments
     if ! parse_arguments "$@"; then
         exit 1
@@ -217,6 +226,12 @@ main() {
 
     # Execute build
     if ! execute_build; then
+        exit 1
+    fi
+
+    # Post-build validation (Suggestion #3: Automated Post-Build Validation)
+    if ! validate_build "$FFMPEG_BUILD"; then
+        log_error "Post-build validation failed"
         exit 1
     fi
 }
